@@ -131,6 +131,7 @@ func TestGet(t *testing.T) {
 			w := httptest.NewRecorder()
 			MakeRouter(fk)(w, request)
 			res := w.Result()
+			defer res.Body.Close()
 			if assert.Equal(
 				t,
 				test.want.statusCode,
