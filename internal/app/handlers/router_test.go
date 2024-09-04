@@ -126,7 +126,7 @@ func TestRouter(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 
 			resp, body := testRequest(t, ts, test.method, test.body, test.request)
-		
+			defer resp.Body.Close()
 			if assert.Equal(
 				t,
 				test.want.statusCode,
