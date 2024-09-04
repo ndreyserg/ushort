@@ -2,19 +2,22 @@ package handlers
 
 import (
 	"net/http"
-	"strings"
+
+	"github.com/go-chi/chi/v5"
 )
 
-func get(s Repositiry, w http.ResponseWriter, r *http.Request) {
-	key := strings.Trim(r.URL.Path, "/")
-	if key == "" {
-		http.Error(w, "empty key", http.StatusBadRequest)
-		return
+func makeGetHandler(s Repositiry) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		key := chi.URLParam(r, "id")
+		if key == "" {
+			http.Error(w, "empty key", http.StatusBadRequest)
+			return
+		}
+		url, err := s.Get(key)
+		if err != nil {
+			http.Error(w, "key not found", http.StatusBadRequest)
+			return
+		}
+		http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 	}
-	url, err := s.Get(key)
-	if err != nil {
-		http.Error(w, "key not found", http.StatusBadRequest)
-		return
-	}
-	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }

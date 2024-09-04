@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
 )
 
 type Repositiry interface {
@@ -9,15 +11,16 @@ type Repositiry interface {
 	Set(val string) string
 }
 
-func MakeRouter(s Repositiry) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodGet:
-			get(s, w, r)
-		case http.MethodPost:
-			post(s, w, r)
-		default:
-			http.Error(w, "", http.StatusBadRequest)
-		}
+func MakeRouter(s Repositiry) http.Handler {
+	errHandler := func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "method not allowed", http.StatusBadRequest)
 	}
+
+	r := chi.NewRouter()
+	r.Get("/{id}", makeGetHandler(s))
+	r.Post("/", makePostHandler(s))
+	r.MethodNotAllowed(errHandler)
+	r.NotFound(errHandler)
+	return r
+
 }

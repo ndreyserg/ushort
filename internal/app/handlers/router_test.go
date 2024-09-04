@@ -2,18 +2,18 @@ package handlers
 
 import (
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-type state map[string]string
-
 type fakeStorage struct {
-	state state
+	state map[string]string
 }
 
 func (fk fakeStorage) Get(key string) (string, error) {
@@ -28,60 +28,63 @@ func (fk fakeStorage) Set(val string) string {
 	return "linkID"
 }
 
-type want struct {
-	statusCode int
-	body       string
+func testRequest(t *testing.T, ts *httptest.Server, method, reqBody string, path string) (*http.Response, string) {
+
+	req, err := http.NewRequest(method, ts.URL+path, strings.NewReader(reqBody))
+	require.NoError(t, err)
+	resp, err := ts.Client().Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	return resp, string(respBody)
 }
 
-func TestGet(t *testing.T) {
+func TestRouter(t *testing.T) {
+	type want struct {
+		statusCode int
+		body       string
+	}
 	const host = "http://localhost:8080/"
+	ts := httptest.NewServer(MakeRouter(fakeStorage{state: map[string]string{"asdasd": "https://ya.ru"}}))
+	ts.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+
 	tests := []struct {
 		name    string
 		request string
 		body    string
 		method  string
-		state   state
 		want    want
 	}{
 		{
 			name:    "unknown method",
-			request: host,
+			request: "/",
 			body:    "",
-			state:   state{"asdasd": "https://ya.ru"},
 			method:  http.MethodPut,
 			want: want{
 				statusCode: http.StatusBadRequest,
-				body:       "",
+				body:       "method not allowed",
 			},
 		},
 		{
 			name:    "empty key",
-			request: host,
+			request: "/",
 			body:    "",
-			state:   state{"asdasd": "https://ya.ru"},
 			method:  http.MethodGet,
 			want: want{
 				statusCode: http.StatusBadRequest,
-				body:       "empty key",
+				body:       "method not allowed",
 			},
 		},
 		{
 			name:    "unknown key",
-			request: host + "dddd",
-			body:    "",
-			state:   state{"asdasd": "https://ya.ru"},
-			method:  http.MethodGet,
-			want: want{
-				statusCode: http.StatusBadRequest,
-				body:       "key not found",
-			},
-		},
-		{
-			name:    "empty storage",
-			request: host + "dddd",
+			request: "/dddd",
 			body:    "",
 			method:  http.MethodGet,
-			state:   state{},
 			want: want{
 				statusCode: http.StatusBadRequest,
 				body:       "key not found",
@@ -89,10 +92,9 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name:    "existed key",
-			request: host + "asdasd",
+			request: "/asdasd",
 			body:    "",
 			method:  http.MethodGet,
-			state:   state{"asdasd": "https://ya.ru"},
 			want: want{
 				statusCode: http.StatusTemporaryRedirect,
 				body:       "<a href=\"https://ya.ru\">Temporary Redirect</a>.",
@@ -100,10 +102,9 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name:    "post empty link",
-			request: host,
+			request: "/",
 			body:    "",
 			method:  http.MethodPost,
-			state:   state{},
 			want: want{
 				statusCode: http.StatusBadRequest,
 				body:       "empty request body",
@@ -111,10 +112,9 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name:    "post link",
-			request: host,
-			body:    "http://ya.ru",
+			request: "",
+			body:    "http://practicum.yndex.ru",
 			method:  http.MethodPost,
-			state:   state{},
 			want: want{
 				statusCode: http.StatusCreated,
 				body:       host + "linkID",
@@ -124,25 +124,20 @@ func TestGet(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			fk := fakeStorage{
-				state: test.state,
-			}
-			request := httptest.NewRequest(test.method, test.request, strings.NewReader(test.body))
-			w := httptest.NewRecorder()
-			MakeRouter(fk)(w, request)
-			res := w.Result()
-			defer res.Body.Close()
+
+			resp, body := testRequest(t, ts, test.method, test.body, test.request)
+		
 			if assert.Equal(
 				t,
 				test.want.statusCode,
-				res.StatusCode,
+				resp.StatusCode,
 				"expected status code %d got %d",
-				test.want.statusCode, res.StatusCode,
+				test.want.statusCode, resp.StatusCode,
 			) {
 				assert.Equal(
 					t,
 					test.want.body,
-					strings.Trim(w.Body.String(), "\n"),
+					strings.Trim(body, "\n"),
 					"expected body \"%s\" got  \"%s\"",
 					test.body,
 					test.want.body,
