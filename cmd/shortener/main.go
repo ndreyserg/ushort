@@ -11,7 +11,7 @@ import (
 func main() {
 	cfg := config.MakeConfig()
 	st := storage.NewStorage()
-	err := http.ListenAndServe(cfg.ServerAddr, handlers.MakeRouter(st, cfg.UrlAddr))
+	err := http.ListenAndServe(cfg.ServerAddr, handlers.MakeRouter(st, cfg.URLAddr))
 
 	if err != nil {
 		panic(err)

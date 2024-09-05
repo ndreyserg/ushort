@@ -11,14 +11,14 @@ type Repositiry interface {
 	Set(val string) string
 }
 
-func MakeRouter(s Repositiry, urlAddr string) http.Handler {
+func MakeRouter(s Repositiry, URLAddr string) http.Handler {
 	errHandler := func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusBadRequest)
 	}
 
 	r := chi.NewRouter()
 	r.Get("/{id}", makeGetHandler(s))
-	r.Post("/", makePostHandler(s, urlAddr))
+	r.Post("/", makePostHandler(s, URLAddr))
 	r.MethodNotAllowed(errHandler)
 	r.NotFound(errHandler)
 	return r
