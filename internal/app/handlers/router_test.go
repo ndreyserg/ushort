@@ -48,7 +48,7 @@ func TestRouter(t *testing.T) {
 		statusCode int
 		body       string
 	}
-	const urlAddr = "localhost:8080"
+	const urlAddr = "http://localhost:8080"
 	ts := httptest.NewServer(MakeRouter(fakeStorage{state: map[string]string{"asdasd": "https://ya.ru"}}, urlAddr))
 	ts.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
@@ -118,7 +118,7 @@ func TestRouter(t *testing.T) {
 			method:  http.MethodPost,
 			want: want{
 				statusCode: http.StatusCreated,
-				body:       fmt.Sprintf("http://%s/linkID", urlAddr),
+				body:       fmt.Sprintf("%s/linkID", urlAddr),
 			},
 		},
 	}

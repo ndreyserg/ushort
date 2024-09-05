@@ -12,7 +12,7 @@ type Config struct {
 func MakeConfig() Config {
 	con := Config{}
 	flag.StringVar(&con.ServerAddr, "a", "localhost:8080", "server addr")
-	flag.StringVar(&con.URLAddr, "b", "localhost:8080", "result server addr")
+	flag.StringVar(&con.URLAddr, "b", "http://localhost:8080", "result server addr")
 	flag.Parse()
 	return con
 }

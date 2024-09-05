@@ -22,7 +22,7 @@ func makePostHandler(s Repositiry, urlAddr string) http.HandlerFunc {
 		}
 		w.WriteHeader(http.StatusCreated)
 		urlID := s.Set(strings.Trim(string(b), " "))
-		short := fmt.Sprintf("http://%s/%s", urlAddr, urlID)
+		short := fmt.Sprintf("%s/%s", urlAddr, urlID)
 		w.Write([]byte(short))
 	}
 }
