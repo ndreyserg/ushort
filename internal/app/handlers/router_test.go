@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -47,8 +48,8 @@ func TestRouter(t *testing.T) {
 		statusCode int
 		body       string
 	}
-	const host = "http://localhost:8080/"
-	ts := httptest.NewServer(MakeRouter(fakeStorage{state: map[string]string{"asdasd": "https://ya.ru"}}))
+	const urlAddr = "localhost:8080"
+	ts := httptest.NewServer(MakeRouter(fakeStorage{state: map[string]string{"asdasd": "https://ya.ru"}}, urlAddr))
 	ts.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
 	}
@@ -117,7 +118,7 @@ func TestRouter(t *testing.T) {
 			method:  http.MethodPost,
 			want: want{
 				statusCode: http.StatusCreated,
-				body:       host + "linkID",
+				body:       fmt.Sprintf("http://%s/linkID", urlAddr),
 			},
 		},
 	}
