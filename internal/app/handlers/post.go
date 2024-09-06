@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func makePostHandler(s Repositiry, urlAddr string) http.HandlerFunc {
+func makePostHandler(s Repositiry, baseURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		b, err := io.ReadAll(r.Body)
 
@@ -22,7 +22,7 @@ func makePostHandler(s Repositiry, urlAddr string) http.HandlerFunc {
 		}
 		w.WriteHeader(http.StatusCreated)
 		urlID := s.Set(strings.Trim(string(b), " "))
-		short := fmt.Sprintf("%s/%s", urlAddr, urlID)
+		short := fmt.Sprintf("%s/%s", baseURL, urlID)
 		w.Write([]byte(short))
 	}
 }
