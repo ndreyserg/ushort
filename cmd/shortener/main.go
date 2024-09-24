@@ -5,13 +5,18 @@ import (
 
 	"github.com/ndreyserg/ushort/internal/app/config"
 	"github.com/ndreyserg/ushort/internal/app/handlers"
+	"github.com/ndreyserg/ushort/internal/app/logger"
 	"github.com/ndreyserg/ushort/internal/app/storage"
 )
 
 func main() {
+	err := logger.Initialize("info")
+	if err != nil {
+		panic(err)
+	}
 	cfg := config.MakeConfig()
 	st := storage.NewStorage()
-	err := http.ListenAndServe(cfg.ServerAddr, handlers.MakeRouter(st, cfg.BaseURL))
+	err = http.ListenAndServe(cfg.ServerAddr, handlers.MakeRouter(st, cfg.BaseURL))
 
 	if err != nil {
 		panic(err)
