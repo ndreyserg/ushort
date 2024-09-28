@@ -39,7 +39,6 @@ func Initialize(level string) error {
 	}
 
 	cfg := zap.NewDevelopmentConfig()
-	cfg.Encoding = "console"
 	cfg.Level = lvl
 	zl, err := cfg.Build()
 

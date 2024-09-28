@@ -10,11 +10,13 @@ import (
 )
 
 func main() {
-	err := logger.Initialize("info")
+	cfg := config.MakeConfig()
+
+	err := logger.Initialize(cfg.LogLevel)
 	if err != nil {
 		panic(err)
 	}
-	cfg := config.MakeConfig()
+
 	st := storage.NewStorage()
 	err = http.ListenAndServe(cfg.ServerAddr, handlers.MakeRouter(st, cfg.BaseURL))
 

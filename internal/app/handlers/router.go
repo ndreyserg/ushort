@@ -22,6 +22,7 @@ func MakeRouter(s Repositiry, baseURL string) http.Handler {
 	r.Use(logger.LoggerMiddleware)
 	r.Get("/{id}", makeGetHandler(s))
 	r.Post("/", makePostHandler(s, baseURL))
+	r.Post("/api/shorten", MakePostJSONHandler(s, baseURL))
 	r.MethodNotAllowed(errHandler)
 	r.NotFound(errHandler)
 	return r

@@ -121,6 +121,16 @@ func TestRouter(t *testing.T) {
 				body:       fmt.Sprintf("%s/linkID", baseURL),
 			},
 		},
+		{
+			name:    "post json link",
+			request: "/api/shorten",
+			body:    `{"url" :"http://practicum.yndex.ru"}`,
+			method:  http.MethodPost,
+			want: want{
+				statusCode: http.StatusCreated,
+				body:       fmt.Sprintf(`{"result":"%s/linkID"}`, baseURL),
+			},
+		},
 	}
 
 	for _, test := range tests {
@@ -140,8 +150,8 @@ func TestRouter(t *testing.T) {
 					test.want.body,
 					strings.Trim(body, "\n"),
 					"expected body \"%s\" got  \"%s\"",
-					test.body,
 					test.want.body,
+					body,
 				)
 			}
 
