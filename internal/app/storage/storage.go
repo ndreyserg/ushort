@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sync"
 )
 
 type storageItem struct {
@@ -23,6 +24,7 @@ func getUniqKey() string {
 }
 
 type Storage struct {
+	mt      *sync.Mutex
 	byKey   map[string]string
 	byVal   map[string]string
 	file    *os.File
@@ -30,6 +32,8 @@ type Storage struct {
 }
 
 func (s *Storage) Set(val string) (string, error) {
+	s.mt.Lock()
+	defer s.mt.Unlock()
 	if s.byVal[val] != "" {
 		return s.byVal[val], nil
 	}
@@ -82,6 +86,7 @@ func NewStorage(filepath string) (*Storage, error) {
 	}
 
 	return &Storage{
+		mt:      &sync.Mutex{},
 		file:    file,
 		encoder: json.NewEncoder(file),
 		byKey:   byKey,
