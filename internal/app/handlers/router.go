@@ -19,6 +19,7 @@ func MakeRouter(s Repositiry, baseURL string) http.Handler {
 	}
 
 	r := chi.NewRouter()
+	r.Use(gzipMiddleware)
 	r.Use(logger.LoggerMiddleware)
 	r.Get("/{id}", makeGetHandler(s))
 	r.Post("/", makePostHandler(s, baseURL))
