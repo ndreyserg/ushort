@@ -25,8 +25,8 @@ func (fk fakeStorage) Get(key string) (string, error) {
 	return "", errors.New("")
 }
 
-func (fk fakeStorage) Set(val string) string {
-	return "linkID"
+func (fk fakeStorage) Set(val string) (string, error) {
+	return "linkID", nil
 }
 
 func testRequest(t *testing.T, ts *httptest.Server, method, reqBody string, path string) (*http.Response, string) {

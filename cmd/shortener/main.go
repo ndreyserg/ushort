@@ -17,7 +17,12 @@ func main() {
 		panic(err)
 	}
 
-	st := storage.NewStorage()
+	st, err := storage.NewStorage(cfg.StoragePath)
+	if err != nil {
+		panic(err)
+	}
+	defer st.Close()
+
 	err = http.ListenAndServe(cfg.ServerAddr, handlers.MakeRouter(st, cfg.BaseURL))
 
 	if err != nil {

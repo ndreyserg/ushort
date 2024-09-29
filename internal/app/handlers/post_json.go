@@ -26,7 +26,13 @@ func MakePostJSONHandler(s Repositiry, baseURL string) http.HandlerFunc {
 			return
 		}
 
-		urlID := s.Set(req.URL)
+		urlID, err := s.Set(req.URL)
+
+		if err != nil {
+			http.Error(w, "", http.StatusBadRequest)
+			return
+		}
+
 		resp := models.Response{
 			Result: fmt.Sprintf("%s/%s", baseURL, urlID),
 		}

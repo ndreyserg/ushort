@@ -9,7 +9,7 @@ import (
 
 type Repositiry interface {
 	Get(key string) (string, error)
-	Set(val string) string
+	Set(val string) (string, error)
 }
 
 func MakeRouter(s Repositiry, baseURL string) http.Handler {
