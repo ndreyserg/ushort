@@ -3,6 +3,8 @@ package handlers
 import (
 	"net/http"
 
+	"context"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/ndreyserg/ushort/internal/app/logger"
 )
@@ -12,7 +14,12 @@ type Repositiry interface {
 	Set(val string) (string, error)
 }
 
-func MakeRouter(s Repositiry, baseURL string) http.Handler {
+type DBConnection interface {
+	PingContext(ctx context.Context) error
+}
+
+
+func MakeRouter(s Repositiry, baseURL string, db DBConnection) http.Handler {
 
 	errHandler := func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusBadRequest)
@@ -21,6 +28,7 @@ func MakeRouter(s Repositiry, baseURL string) http.Handler {
 	r := chi.NewRouter()
 	r.Use(gzipMiddleware)
 	r.Use(logger.LoggerMiddleware)
+	r.Get("/ping", makePingHandler(db))
 	r.Get("/{id}", makeGetHandler(s))
 	r.Post("/", makePostHandler(s, baseURL))
 	r.Post("/api/shorten", MakePostJSONHandler(s, baseURL))

@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/golang/mock/gomock"
+	"github.com/ndreyserg/ushort/internal/app/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -44,12 +46,19 @@ func testRequest(t *testing.T, ts *httptest.Server, method, reqBody string, path
 }
 
 func TestRouter(t *testing.T) {
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	dbMock := mocks.NewMockDBConnection(ctrl)
+	dbMock.EXPECT().PingContext(gomock.Any()).Return(nil)
+
 	type want struct {
 		statusCode int
 		body       string
 	}
 	const baseURL = "http://localhost:8080"
-	ts := httptest.NewServer(MakeRouter(fakeStorage{state: map[string]string{"asdasd": "https://ya.ru"}}, baseURL))
+	ts := httptest.NewServer(MakeRouter(fakeStorage{state: map[string]string{"asdasd": "https://ya.ru"}}, baseURL, dbMock))
 	ts.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
 	}
@@ -129,6 +138,16 @@ func TestRouter(t *testing.T) {
 			want: want{
 				statusCode: http.StatusCreated,
 				body:       fmt.Sprintf(`{"result":"%s/linkID"}`, baseURL),
+			},
+		},
+		{
+			name:    "ping DB",
+			request: "/ping",
+			body:    "",
+			method:  http.MethodGet,
+			want: want{
+				statusCode: http.StatusOK,
+				body:       "",
 			},
 		},
 	}

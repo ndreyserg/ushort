@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/ndreyserg/ushort/internal/app/config"
+	"github.com/ndreyserg/ushort/internal/app/db"
 	"github.com/ndreyserg/ushort/internal/app/handlers"
 	"github.com/ndreyserg/ushort/internal/app/logger"
 	"github.com/ndreyserg/ushort/internal/app/storage"
@@ -23,7 +24,14 @@ func main() {
 	}
 	defer st.Close()
 
-	err = http.ListenAndServe(cfg.ServerAddr, handlers.MakeRouter(st, cfg.BaseURL))
+	DB, err := db.MakeConnect(cfg.DSN)
+
+	if err != nil {
+		panic(err)
+	}
+	defer DB.Close()
+
+	err = http.ListenAndServe(cfg.ServerAddr, handlers.MakeRouter(st, cfg.BaseURL, DB))
 
 	if err != nil {
 		panic(err)
