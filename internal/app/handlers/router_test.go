@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/golang/mock/gomock"
+	"github.com/ndreyserg/ushort/internal/app/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,8 +27,8 @@ func (fk fakeStorage) Get(key string) (string, error) {
 	return "", errors.New("")
 }
 
-func (fk fakeStorage) Set(val string) string {
-	return "linkID"
+func (fk fakeStorage) Set(val string) (string, error) {
+	return "linkID", nil
 }
 
 func testRequest(t *testing.T, ts *httptest.Server, method, reqBody string, path string) (*http.Response, string) {
@@ -44,12 +46,19 @@ func testRequest(t *testing.T, ts *httptest.Server, method, reqBody string, path
 }
 
 func TestRouter(t *testing.T) {
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	dbMock := mocks.NewMockDBConnection(ctrl)
+	dbMock.EXPECT().PingContext(gomock.Any()).Return(nil)
+
 	type want struct {
 		statusCode int
 		body       string
 	}
 	const baseURL = "http://localhost:8080"
-	ts := httptest.NewServer(MakeRouter(fakeStorage{state: map[string]string{"asdasd": "https://ya.ru"}}, baseURL))
+	ts := httptest.NewServer(MakeRouter(fakeStorage{state: map[string]string{"asdasd": "https://ya.ru"}}, baseURL, dbMock))
 	ts.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
 	}
@@ -121,6 +130,26 @@ func TestRouter(t *testing.T) {
 				body:       fmt.Sprintf("%s/linkID", baseURL),
 			},
 		},
+		{
+			name:    "post json link",
+			request: "/api/shorten",
+			body:    `{"url" :"http://practicum.yndex.ru"}`,
+			method:  http.MethodPost,
+			want: want{
+				statusCode: http.StatusCreated,
+				body:       fmt.Sprintf(`{"result":"%s/linkID"}`, baseURL),
+			},
+		},
+		{
+			name:    "ping DB",
+			request: "/ping",
+			body:    "",
+			method:  http.MethodGet,
+			want: want{
+				statusCode: http.StatusOK,
+				body:       "",
+			},
+		},
 	}
 
 	for _, test := range tests {
@@ -140,8 +169,8 @@ func TestRouter(t *testing.T) {
 					test.want.body,
 					strings.Trim(body, "\n"),
 					"expected body \"%s\" got  \"%s\"",
-					test.body,
 					test.want.body,
+					body,
 				)
 			}
 

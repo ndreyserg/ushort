@@ -21,7 +21,13 @@ func makePostHandler(s Repositiry, baseURL string) http.HandlerFunc {
 			return
 		}
 		w.WriteHeader(http.StatusCreated)
-		urlID := s.Set(strings.Trim(string(b), " "))
+		urlID, err := s.Set(strings.Trim(string(b), " "))
+
+		if err != nil {
+			http.Error(w, "storage error", http.StatusBadRequest)
+			return
+		}
+
 		short := fmt.Sprintf("%s/%s", baseURL, urlID)
 		w.Write([]byte(short))
 	}
