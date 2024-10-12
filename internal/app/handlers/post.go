@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func makePostHandler(s Repositiry, baseURL string) http.HandlerFunc {
+func makePostHandler(s Storage, baseURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		b, err := io.ReadAll(r.Body)
 
@@ -20,8 +20,13 @@ func makePostHandler(s Repositiry, baseURL string) http.HandlerFunc {
 			http.Error(w, "empty request body", http.StatusBadRequest)
 			return
 		}
+		urlID, err := s.Set(r.Context(), strings.Trim(string(b), " "))
+
+		if err != nil {
+			http.Error(w, "storage error", http.StatusBadRequest)
+			return
+		}
 		w.WriteHeader(http.StatusCreated)
-		urlID := s.Set(strings.Trim(string(b), " "))
 		short := fmt.Sprintf("%s/%s", baseURL, urlID)
 		w.Write([]byte(short))
 	}

@@ -1,9 +1,11 @@
 package storage
 
 import (
+	"context"
 	"crypto/rand"
-	"errors"
 	"fmt"
+
+	"github.com/ndreyserg/ushort/internal/app/logger"
 )
 
 func getUniqKey() string {
@@ -15,32 +17,23 @@ func getUniqKey() string {
 	return fmt.Sprintf("%X", b)
 }
 
-type Storage struct {
-	byKey map[string]string
-	byVal map[string]string
+type Storage interface {
+	Get(ctx context.Context, key string) (string, error)
+	Set(ctx context.Context, val string) (string, error)
+	Check(ctx context.Context) error
+	Close() error
 }
 
-func (s Storage) Set(val string) string {
-	if s.byVal[val] != "" {
-		return s.byVal[val]
+func NewStorage(dsn, fileName string) (Storage, error) {
+	if dsn != "" {
+		logger.Log.Info("database storage used")
+		return NewDBStorage(dsn)
 	}
-	key := getUniqKey()
-	s.byVal[val] = key
-	s.byKey[key] = val
-	return key
-}
 
-func (s *Storage) Get(key string) (string, error) {
-	val := s.byKey[key]
-	if val == "" {
-		return "", errors.New("")
+	if fileName != "" {
+		logger.Log.Info("file storage used")
+		return NewFileStorage(fileName)
 	}
-	return val, nil
-}
-
-func NewStorage() *Storage {
-	return &Storage{
-		byKey: map[string]string{},
-		byVal: map[string]string{},
-	}
+	logger.Log.Info("memory storage used")
+	return NewMemoryStorage(), nil
 }
