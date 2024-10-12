@@ -27,3 +27,4 @@ storage_data
 
 #db
 docker-compose.yml
+.env

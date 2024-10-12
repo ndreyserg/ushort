@@ -9,7 +9,7 @@ import (
 	"github.com/ndreyserg/ushort/internal/app/models"
 )
 
-func MakePostJSONHandler(s Repositiry, baseURL string) http.HandlerFunc {
+func MakePostJSONHandler(s Storage, baseURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		var req models.Requst
@@ -26,7 +26,7 @@ func MakePostJSONHandler(s Repositiry, baseURL string) http.HandlerFunc {
 			return
 		}
 
-		urlID, err := s.Set(req.URL)
+		urlID, err := s.Set(r.Context(), req.URL)
 
 		if err != nil {
 			http.Error(w, "", http.StatusBadRequest)

@@ -38,7 +38,7 @@ func Initialize(level string) error {
 		return err
 	}
 
-	cfg := zap.NewDevelopmentConfig()
+	cfg := zap.NewProductionConfig()
 	cfg.Level = lvl
 	zl, err := cfg.Build()
 

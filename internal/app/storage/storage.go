@@ -1,18 +1,12 @@
 package storage
 
 import (
+	"context"
 	"crypto/rand"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"os"
-	"sync"
-)
 
-type storageItem struct {
-	Key   string `json:"short"`
-	Value string `json:"original"`
-}
+	"github.com/ndreyserg/ushort/internal/app/logger"
+)
 
 func getUniqKey() string {
 	n := 4
@@ -23,73 +17,23 @@ func getUniqKey() string {
 	return fmt.Sprintf("%X", b)
 }
 
-type Storage struct {
-	mt      *sync.Mutex
-	byKey   map[string]string
-	byVal   map[string]string
-	file    *os.File
-	encoder *json.Encoder
+type Storage interface {
+	Get(ctx context.Context, key string) (string, error)
+	Set(ctx context.Context, val string) (string, error)
+	Check(ctx context.Context) error
+	Close() error
 }
 
-func (s *Storage) Set(val string) (string, error) {
-	s.mt.Lock()
-	defer s.mt.Unlock()
-	if s.byVal[val] != "" {
-		return s.byVal[val], nil
-	}
-	key := getUniqKey()
-	si := storageItem{
-		Key:   key,
-		Value: val,
-	}
-	err := s.encoder.Encode(&si)
-	if err != nil {
-		return "", err
+func NewStorage(dsn, fileName string) (Storage, error) {
+	if dsn != "" {
+		logger.Log.Info("database storage used")
+		return NewDBStorage(dsn)
 	}
 
-	s.byVal[val] = key
-	s.byKey[key] = val
-	return key, nil
-}
-
-func (s *Storage) Get(key string) (string, error) {
-	val := s.byKey[key]
-	if val == "" {
-		return "", errors.New("")
+	if fileName != "" {
+		logger.Log.Info("file storage used")
+		return NewFileStorage(fileName)
 	}
-	return val, nil
-}
-
-func (s *Storage) Close() error {
-	return s.file.Close()
-}
-
-func NewStorage(filepath string) (*Storage, error) {
-	file, err := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		return nil, err
-	}
-
-	decoder := json.NewDecoder(file)
-
-	byKey := map[string]string{}
-	byVal := map[string]string{}
-
-	for decoder.More() {
-		si := &storageItem{}
-		err := decoder.Decode(&si)
-		if err != nil {
-			return nil, err
-		}
-		byKey[si.Key] = si.Value
-		byVal[si.Value] = si.Key
-	}
-
-	return &Storage{
-		mt:      &sync.Mutex{},
-		file:    file,
-		encoder: json.NewEncoder(file),
-		byKey:   byKey,
-		byVal:   byVal,
-	}, nil
+	logger.Log.Info("memory storage used")
+	return NewMemoryStorage(), nil
 }

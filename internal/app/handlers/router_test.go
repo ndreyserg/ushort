@@ -15,22 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type fakeStorage struct {
-	state map[string]string
-}
-
-func (fk fakeStorage) Get(key string) (string, error) {
-	res, ok := fk.state[key]
-	if ok {
-		return res, nil
-	}
-	return "", errors.New("")
-}
-
-func (fk fakeStorage) Set(val string) (string, error) {
-	return "linkID", nil
-}
-
 func testRequest(t *testing.T, ts *httptest.Server, method, reqBody string, path string) (*http.Response, string) {
 
 	req, err := http.NewRequest(method, ts.URL+path, strings.NewReader(reqBody))
@@ -50,15 +34,18 @@ func TestRouter(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	dbMock := mocks.NewMockDBConnection(ctrl)
-	dbMock.EXPECT().PingContext(gomock.Any()).Return(nil)
+	storageMock := mocks.NewMockStorage(ctrl)
+	storageMock.EXPECT().Check(gomock.Any()).Return(nil)
+	storageMock.EXPECT().Get(gomock.Any(), gomock.Eq("unknown_key")).Return("", errors.New(""))
+	storageMock.EXPECT().Get(gomock.Any(), gomock.Eq("existed_key")).Return("https://ya.ru", nil)
+	storageMock.EXPECT().Set(gomock.Any(), gomock.Eq("http://practicum.yndex.ru")).Return("new_short_link", nil).Times(2)
 
 	type want struct {
 		statusCode int
 		body       string
 	}
 	const baseURL = "http://localhost:8080"
-	ts := httptest.NewServer(MakeRouter(fakeStorage{state: map[string]string{"asdasd": "https://ya.ru"}}, baseURL, dbMock))
+	ts := httptest.NewServer(MakeRouter(storageMock, baseURL))
 	ts.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
 	}
@@ -92,7 +79,7 @@ func TestRouter(t *testing.T) {
 		},
 		{
 			name:    "unknown key",
-			request: "/dddd",
+			request: "/unknown_key",
 			body:    "",
 			method:  http.MethodGet,
 			want: want{
@@ -102,7 +89,7 @@ func TestRouter(t *testing.T) {
 		},
 		{
 			name:    "existed key",
-			request: "/asdasd",
+			request: "/existed_key",
 			body:    "",
 			method:  http.MethodGet,
 			want: want{
@@ -127,7 +114,7 @@ func TestRouter(t *testing.T) {
 			method:  http.MethodPost,
 			want: want{
 				statusCode: http.StatusCreated,
-				body:       fmt.Sprintf("%s/linkID", baseURL),
+				body:       fmt.Sprintf("%s/new_short_link", baseURL),
 			},
 		},
 		{
@@ -137,7 +124,7 @@ func TestRouter(t *testing.T) {
 			method:  http.MethodPost,
 			want: want{
 				statusCode: http.StatusCreated,
-				body:       fmt.Sprintf(`{"result":"%s/linkID"}`, baseURL),
+				body:       fmt.Sprintf(`{"result":"%s/new_short_link"}`, baseURL),
 			},
 		},
 		{
