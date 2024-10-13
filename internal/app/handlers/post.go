@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 
+	"github.com/ndreyserg/ushort/internal/app/logger"
 	"github.com/ndreyserg/ushort/internal/app/storage"
 )
 
@@ -25,10 +27,17 @@ func makePostHandler(s storage.Storage, baseURL string) http.HandlerFunc {
 		urlID, err := s.Set(r.Context(), strings.Trim(string(b), " "))
 
 		if err != nil {
-			http.Error(w, "storage error", http.StatusBadRequest)
-			return
+			if errors.Is(err, storage.ErrConflict) {
+				w.WriteHeader(http.StatusConflict)
+			} else {
+				logger.Log.Error(err)
+				http.Error(w, "storage error", http.StatusBadRequest)
+				return
+			}
+		} else {
+			w.WriteHeader(http.StatusCreated)
 		}
-		w.WriteHeader(http.StatusCreated)
+
 		short := fmt.Sprintf("%s/%s", baseURL, urlID)
 		w.Write([]byte(short))
 	}

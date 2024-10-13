@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -29,7 +30,7 @@ func MakePostBatchHandler(s storage.Storage, baseURL string) http.HandlerFunc {
 
 		res, err := s.SetBatch(r.Context(), req)
 
-		if err != nil {
+		if err != nil && !errors.Is(err, storage.ErrConflict) {
 			http.Error(w, "", http.StatusInternalServerError)
 			logger.Log.Error(err)
 			return

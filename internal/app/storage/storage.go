@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 
 	"github.com/ndreyserg/ushort/internal/app/logger"
@@ -17,6 +18,8 @@ func getUniqKey() string {
 	}
 	return fmt.Sprintf("%X", b)
 }
+
+var ErrConflict = errors.New("url exists")
 
 type Storage interface {
 	Get(ctx context.Context, key string) (string, error)

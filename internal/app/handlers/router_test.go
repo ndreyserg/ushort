@@ -12,6 +12,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/ndreyserg/ushort/internal/app/mocks"
 	"github.com/ndreyserg/ushort/internal/app/models"
+	"github.com/ndreyserg/ushort/internal/app/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -49,6 +50,7 @@ func TestRouter(t *testing.T) {
 	storageMock.EXPECT().Get(gomock.Any(), gomock.Eq("unknown_key")).Return("", errors.New(""))
 	storageMock.EXPECT().Get(gomock.Any(), gomock.Eq("existed_key")).Return("https://ya.ru", nil)
 	storageMock.EXPECT().Set(gomock.Any(), gomock.Eq("http://practicum.yndex.ru")).Return("new_short_link", nil).Times(2)
+	storageMock.EXPECT().Set(gomock.Any(), gomock.Eq("conflict")).Return("old_short_link", storage.ErrConflict).Times(2)
 	storageMock.EXPECT().SetBatch(gomock.Any(), gomock.Eq(incBatch)).Return(resBatch, nil)
 
 	type want struct {
@@ -129,6 +131,16 @@ func TestRouter(t *testing.T) {
 			},
 		},
 		{
+			name:    "post conflict link",
+			request: "",
+			body:    "conflict",
+			method:  http.MethodPost,
+			want: want{
+				statusCode: http.StatusConflict,
+				body:       fmt.Sprintf("%s/old_short_link", baseURL),
+			},
+		},
+		{
 			name:    "post json link",
 			request: "/api/shorten",
 			body:    `{"url" :"http://practicum.yndex.ru"}`,
@@ -136,6 +148,16 @@ func TestRouter(t *testing.T) {
 			want: want{
 				statusCode: http.StatusCreated,
 				body:       fmt.Sprintf(`{"result":"%s/new_short_link"}`, baseURL),
+			},
+		},
+		{
+			name:    "post json conflict link",
+			request: "/api/shorten",
+			body:    `{"url" :"conflict"}`,
+			method:  http.MethodPost,
+			want: want{
+				statusCode: http.StatusConflict,
+				body:       fmt.Sprintf(`{"result":"%s/old_short_link"}`, baseURL),
 			},
 		},
 		{

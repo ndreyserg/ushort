@@ -35,19 +35,34 @@ func (s *dbStorage) Get(ctx context.Context, key string) (string, error) {
 }
 
 func (s *dbStorage) Set(ctx context.Context, val string) (string, error) {
-	key := getUniqKey()
-	_, err := s.db.ExecContext(
+	short := getUniqKey()
+
+	row := s.db.QueryRowContext(
 		ctx,
-		"insert into short_urls (short, original) values ($1, $2)",
-		key,
+		"insert into short_urls (short, original) "+
+			"values ($1, $2) "+
+			"on conflict (original) do UPDATE SET original = EXCLUDED.original returning short",
+		short,
 		val,
 	)
+
+	if row.Err() != nil {
+		return "", row.Err()
+	}
+
+	var savedShort string
+
+	err := row.Scan(&savedShort)
 
 	if err != nil {
 		return "", err
 	}
 
-	return key, nil
+	if savedShort != short {
+		return savedShort, ErrConflict
+	}
+
+	return savedShort, nil
 }
 
 func (s *dbStorage) Check(ctx context.Context) error {
@@ -88,13 +103,22 @@ func (s *dbStorage) SetBatch(ctx context.Context, batch models.BatchRequest) (mo
 	return result, nil
 }
 
-func createTable(db *sql.DB) error {
+func runMigrations(db *sql.DB) error {
 	query := `
-CREATE TABLE IF NOT EXISTS short_urls (
+create table if not exists short_urls (
     short VARCHAR(20) NOT NULL PRIMARY KEY,
     original VARCHAR(1000) NOT NULL
 )`
 	_, err := db.ExecContext(context.Background(), query)
+
+	if err != nil {
+		return err
+	}
+
+	query = "create unique index if not exists short_urls_original_uniq on short_urls (original)"
+
+	_, err = db.ExecContext(context.Background(), query)
+
 	return err
 }
 
@@ -105,7 +129,7 @@ func NewDBStorage(dsn string) (Storage, error) {
 		return nil, err
 	}
 
-	if err = createTable(db); err != nil {
+	if err = runMigrations(db); err != nil {
 		return nil, err
 	}
 

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -26,20 +27,26 @@ func MakePostJSONHandler(s storage.Storage, baseURL string) http.HandlerFunc {
 			http.Error(w, "", http.StatusBadRequest)
 			return
 		}
-
+		w.Header().Set("content-type", "application/json")
 		urlID, err := s.Set(r.Context(), req.URL)
+		
 
 		if err != nil {
-			http.Error(w, "", http.StatusBadRequest)
-			return
+			if errors.Is(err, storage.ErrConflict) {
+				w.WriteHeader(http.StatusConflict)
+			} else {
+				logger.Log.Error(err)
+				http.Error(w, "", http.StatusBadRequest)
+				return
+			}
+
+		} else {
+			w.WriteHeader(http.StatusCreated)
 		}
 
 		resp := models.Response{
 			Result: fmt.Sprintf("%s/%s", baseURL, urlID),
 		}
-
-		w.Header().Set("content-type", "application/json")
-		w.WriteHeader(http.StatusCreated)
 
 		enc := json.NewEncoder(w)
 
