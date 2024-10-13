@@ -5,6 +5,7 @@ import (
 	"database/sql"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/ndreyserg/ushort/internal/app/models"
 )
 
 type dbStorage struct {
@@ -55,6 +56,36 @@ func (s *dbStorage) Check(ctx context.Context) error {
 
 func (s *dbStorage) Close() error {
 	return s.db.Close()
+}
+
+func (s *dbStorage) SetBatch(ctx context.Context, batch models.BatchRequest) (models.BatchResult, error) {
+	result := make(models.BatchResult, 0, len(batch))
+	tx, err := s.db.BeginTx(ctx, nil)
+	defer tx.Rollback()
+
+	if err != nil {
+		return nil, err
+	}
+
+	for _, item := range batch {
+		resultItem := models.BatchResultItem{
+			ID:    item.ID,
+			Short: getUniqKey(),
+		}
+		_, err := tx.ExecContext(
+			ctx,
+			"insert into short_urls (short, original) values ($1, $2)",
+			resultItem.Short,
+			item.Original,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, resultItem)
+	}
+	tx.Commit()
+	return result, nil
 }
 
 func createTable(db *sql.DB) error {

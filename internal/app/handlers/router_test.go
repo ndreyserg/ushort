@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/ndreyserg/ushort/internal/app/mocks"
+	"github.com/ndreyserg/ushort/internal/app/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -34,11 +35,21 @@ func TestRouter(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
+	incBatch := models.BatchRequest{
+		models.BatchRequestItem{ID: "1", Original: "original1"},
+		models.BatchRequestItem{ID: "2", Original: "original2"},
+	}
+	resBatch := models.BatchResult{
+		models.BatchResultItem{ID: "1", Short: "short1"},
+		models.BatchResultItem{ID: "2", Short: "short2"},
+	}
+
 	storageMock := mocks.NewMockStorage(ctrl)
 	storageMock.EXPECT().Check(gomock.Any()).Return(nil)
 	storageMock.EXPECT().Get(gomock.Any(), gomock.Eq("unknown_key")).Return("", errors.New(""))
 	storageMock.EXPECT().Get(gomock.Any(), gomock.Eq("existed_key")).Return("https://ya.ru", nil)
 	storageMock.EXPECT().Set(gomock.Any(), gomock.Eq("http://practicum.yndex.ru")).Return("new_short_link", nil).Times(2)
+	storageMock.EXPECT().SetBatch(gomock.Any(), gomock.Eq(incBatch)).Return(resBatch, nil)
 
 	type want struct {
 		statusCode int
@@ -135,6 +146,26 @@ func TestRouter(t *testing.T) {
 			want: want{
 				statusCode: http.StatusOK,
 				body:       "",
+			},
+		},
+		{
+			name:    "post empty batch",
+			request: "/api/shorten/batch",
+			body:    `[]`,
+			method:  http.MethodPost,
+			want: want{
+				statusCode: http.StatusBadRequest,
+				body:       "",
+			},
+		},
+		{
+			name:    "post batch",
+			request: "/api/shorten/batch",
+			body:    `[{"correlation_id": "1","original_url": "original1"}, {"correlation_id": "2","original_url": "original2"}]`,
+			method:  http.MethodPost,
+			want: want{
+				statusCode: http.StatusCreated,
+				body:       `[{"correlation_id":"1","short_url":"http://localhost:8080/short1"},{"correlation_id":"2","short_url":"http://localhost:8080/short2"}]`,
 			},
 		},
 	}

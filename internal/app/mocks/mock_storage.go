@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	models "github.com/ndreyserg/ushort/internal/app/models"
 )
 
 // MockStorage is a mock of Storage interface.
@@ -90,4 +91,19 @@ func (m *MockStorage) Set(arg0 context.Context, arg1 string) (string, error) {
 func (mr *MockStorageMockRecorder) Set(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Set", reflect.TypeOf((*MockStorage)(nil).Set), arg0, arg1)
+}
+
+// SetBatch mocks base method.
+func (m *MockStorage) SetBatch(arg0 context.Context, arg1 models.BatchRequest) (models.BatchResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetBatch", arg0, arg1)
+	ret0, _ := ret[0].(models.BatchResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SetBatch indicates an expected call of SetBatch.
+func (mr *MockStorageMockRecorder) SetBatch(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetBatch", reflect.TypeOf((*MockStorage)(nil).SetBatch), arg0, arg1)
 }

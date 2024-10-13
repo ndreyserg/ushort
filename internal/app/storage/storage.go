@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/ndreyserg/ushort/internal/app/logger"
+	"github.com/ndreyserg/ushort/internal/app/models"
 )
 
 func getUniqKey() string {
@@ -20,6 +21,7 @@ func getUniqKey() string {
 type Storage interface {
 	Get(ctx context.Context, key string) (string, error)
 	Set(ctx context.Context, val string) (string, error)
+	SetBatch(ctx context.Context, batch models.BatchRequest) (models.BatchResult, error)
 	Check(ctx context.Context) error
 	Close() error
 }

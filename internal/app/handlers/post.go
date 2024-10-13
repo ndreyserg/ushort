@@ -5,9 +5,11 @@ import (
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/ndreyserg/ushort/internal/app/storage"
 )
 
-func makePostHandler(s Storage, baseURL string) http.HandlerFunc {
+func makePostHandler(s storage.Storage, baseURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		b, err := io.ReadAll(r.Body)
 

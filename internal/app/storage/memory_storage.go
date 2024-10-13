@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"sync"
+
+	"github.com/ndreyserg/ushort/internal/app/models"
 )
 
 type memoryStorage struct {
@@ -38,6 +40,25 @@ func (s *memoryStorage) Close() error {
 
 func (s *memoryStorage) Check(ctx context.Context) error {
 	return errors.New("memory storage has no db")
+}
+
+func (s *memoryStorage) SetBatch(ctx context.Context, batch models.BatchRequest) (models.BatchResult, error) {
+	result := make(models.BatchResult, 0, len(batch))
+
+	for _, item := range batch {
+		short, err := s.Set(ctx, item.Original)
+
+		if err != nil {
+			return nil, err
+		}
+		resultItem := models.BatchResultItem{
+			ID:    item.ID,
+			Short: short,
+		}
+
+		result = append(result, resultItem)
+	}
+	return result, nil
 }
 
 func NewMemoryStorage() Storage {

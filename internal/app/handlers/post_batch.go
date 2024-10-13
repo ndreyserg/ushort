@@ -10,10 +10,10 @@ import (
 	"github.com/ndreyserg/ushort/internal/app/storage"
 )
 
-func MakePostJSONHandler(s storage.Storage, baseURL string) http.HandlerFunc {
+func MakePostBatchHandler(s storage.Storage, baseURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		var req models.Request
+		var req models.BatchRequest
 
 		dec := json.NewDecoder(r.Body)
 
@@ -22,28 +22,27 @@ func MakePostJSONHandler(s storage.Storage, baseURL string) http.HandlerFunc {
 			return
 		}
 
-		if req.URL == "" {
+		if len(req) == 0 {
 			http.Error(w, "", http.StatusBadRequest)
 			return
 		}
 
-		urlID, err := s.Set(r.Context(), req.URL)
+		res, err := s.SetBatch(r.Context(), req)
 
 		if err != nil {
-			http.Error(w, "", http.StatusBadRequest)
+			http.Error(w, "", http.StatusInternalServerError)
+			logger.Log.Error(err)
 			return
 		}
 
-		resp := models.Response{
-			Result: fmt.Sprintf("%s/%s", baseURL, urlID),
+		for key := range res {
+			res[key].Short = fmt.Sprintf("%s/%s", baseURL, res[key].Short)
 		}
 
+		enc := json.NewEncoder(w)
 		w.Header().Set("content-type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-
-		enc := json.NewEncoder(w)
-
-		if err := enc.Encode(resp); err != nil {
+		if err := enc.Encode(res); err != nil {
 			return
 		}
 		logger.Log.Info("success")

@@ -6,6 +6,8 @@ import (
 	"errors"
 	"os"
 	"sync"
+
+	"github.com/ndreyserg/ushort/internal/app/models"
 )
 
 type storageItem struct {
@@ -56,6 +58,24 @@ func (s *fileStorage) Close() error {
 
 func (s *fileStorage) Check(ctx context.Context) error {
 	return errors.New("file storage has no db")
+}
+
+func (s *fileStorage) SetBatch(ctx context.Context, batch models.BatchRequest) (models.BatchResult, error) {
+	result := make(models.BatchResult, 0, len(batch))
+
+	for _, item := range batch {
+		short, err := s.Set(ctx, item.Original)
+
+		if err != nil {
+			return nil, err
+		}
+		resultItem := models.BatchResultItem{
+			ID:    item.ID,
+			Short: short,
+		}
+		result = append(result, resultItem)
+	}
+	return result, nil
 }
 
 func NewFileStorage(filepath string) (Storage, error) {
