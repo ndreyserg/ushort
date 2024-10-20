@@ -14,7 +14,7 @@ func makePingHandler(st storage.Storage) http.HandlerFunc {
 		defer cancel()
 		err := st.Check(ctx)
 		if err != nil {
-			http.Error(w, "", http.StatusInternalServerError)
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		w.WriteHeader(http.StatusOK)

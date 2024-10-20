@@ -29,7 +29,7 @@ func (s *memoryStorage) Set(ctx context.Context, val string) (string, error) {
 func (s *memoryStorage) Get(ctx context.Context, key string) (string, error) {
 	val := s.byKey[key]
 	if val == "" {
-		return "", errors.New("")
+		return "", errors.New("not found")
 	}
 	return val, nil
 }

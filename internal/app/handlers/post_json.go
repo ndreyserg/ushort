@@ -29,17 +29,16 @@ func MakePostJSONHandler(s storage.Storage, baseURL string) http.HandlerFunc {
 		}
 		w.Header().Set("content-type", "application/json")
 		urlID, err := s.Set(r.Context(), req.URL)
-		
 
-		if err != nil {
-			if errors.Is(err, storage.ErrConflict) {
-				w.WriteHeader(http.StatusConflict)
-			} else {
-				logger.Log.Error(err)
-				http.Error(w, "", http.StatusBadRequest)
-				return
-			}
+		if err != nil && !errors.Is(err, storage.ErrConflict) {
+			logger.Log.Error(err)
+			http.Error(w, "", http.StatusBadRequest)
+			return
 
+		}
+
+		if err != nil && errors.Is(err, storage.ErrConflict) {
+			w.WriteHeader(http.StatusConflict)
 		} else {
 			w.WriteHeader(http.StatusCreated)
 		}

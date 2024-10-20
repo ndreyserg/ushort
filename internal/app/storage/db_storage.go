@@ -39,9 +39,8 @@ func (s *dbStorage) Set(ctx context.Context, val string) (string, error) {
 
 	row := s.db.QueryRowContext(
 		ctx,
-		"insert into short_urls (short, original) "+
-			"values ($1, $2) "+
-			"on conflict (original) do UPDATE SET original = EXCLUDED.original returning short",
+		`insert into short_urls (short, original) values ($1, $2)
+		on conflict (original) do UPDATE SET original = EXCLUDED.original returning short`,
 		short,
 		val,
 	)

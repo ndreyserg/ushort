@@ -31,7 +31,7 @@ func makePostHandler(s storage.Storage, baseURL string) http.HandlerFunc {
 				w.WriteHeader(http.StatusConflict)
 			} else {
 				logger.Log.Error(err)
-				http.Error(w, "storage error", http.StatusBadRequest)
+				http.Error(w, "storage error", http.StatusInternalServerError)
 				return
 			}
 		} else {
