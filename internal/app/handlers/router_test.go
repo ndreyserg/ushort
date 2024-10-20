@@ -9,25 +9,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/golang/mock/gomock"
+	"github.com/ndreyserg/ushort/internal/app/mocks"
+	"github.com/ndreyserg/ushort/internal/app/models"
+	"github.com/ndreyserg/ushort/internal/app/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-type fakeStorage struct {
-	state map[string]string
-}
-
-func (fk fakeStorage) Get(key string) (string, error) {
-	res, ok := fk.state[key]
-	if ok {
-		return res, nil
-	}
-	return "", errors.New("")
-}
-
-func (fk fakeStorage) Set(val string) string {
-	return "linkID"
-}
 
 func testRequest(t *testing.T, ts *httptest.Server, method, reqBody string, path string) (*http.Response, string) {
 
@@ -44,12 +32,33 @@ func testRequest(t *testing.T, ts *httptest.Server, method, reqBody string, path
 }
 
 func TestRouter(t *testing.T) {
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	incBatch := models.BatchRequest{
+		models.BatchRequestItem{ID: "1", Original: "original1"},
+		models.BatchRequestItem{ID: "2", Original: "original2"},
+	}
+	resBatch := models.BatchResult{
+		models.BatchResultItem{ID: "1", Short: "short1"},
+		models.BatchResultItem{ID: "2", Short: "short2"},
+	}
+
+	storageMock := mocks.NewMockStorage(ctrl)
+	storageMock.EXPECT().Check(gomock.Any()).Return(nil)
+	storageMock.EXPECT().Get(gomock.Any(), gomock.Eq("unknown_key")).Return("", errors.New(""))
+	storageMock.EXPECT().Get(gomock.Any(), gomock.Eq("existed_key")).Return("https://ya.ru", nil)
+	storageMock.EXPECT().Set(gomock.Any(), gomock.Eq("http://practicum.yndex.ru")).Return("new_short_link", nil).Times(2)
+	storageMock.EXPECT().Set(gomock.Any(), gomock.Eq("conflict")).Return("old_short_link", storage.ErrConflict).Times(2)
+	storageMock.EXPECT().SetBatch(gomock.Any(), gomock.Eq(incBatch)).Return(resBatch, nil)
+
 	type want struct {
 		statusCode int
 		body       string
 	}
 	const baseURL = "http://localhost:8080"
-	ts := httptest.NewServer(MakeRouter(fakeStorage{state: map[string]string{"asdasd": "https://ya.ru"}}, baseURL))
+	ts := httptest.NewServer(MakeRouter(storageMock, baseURL))
 	ts.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
 	}
@@ -83,7 +92,7 @@ func TestRouter(t *testing.T) {
 		},
 		{
 			name:    "unknown key",
-			request: "/dddd",
+			request: "/unknown_key",
 			body:    "",
 			method:  http.MethodGet,
 			want: want{
@@ -93,7 +102,7 @@ func TestRouter(t *testing.T) {
 		},
 		{
 			name:    "existed key",
-			request: "/asdasd",
+			request: "/existed_key",
 			body:    "",
 			method:  http.MethodGet,
 			want: want{
@@ -118,7 +127,67 @@ func TestRouter(t *testing.T) {
 			method:  http.MethodPost,
 			want: want{
 				statusCode: http.StatusCreated,
-				body:       fmt.Sprintf("%s/linkID", baseURL),
+				body:       fmt.Sprintf("%s/new_short_link", baseURL),
+			},
+		},
+		{
+			name:    "post conflict link",
+			request: "",
+			body:    "conflict",
+			method:  http.MethodPost,
+			want: want{
+				statusCode: http.StatusConflict,
+				body:       fmt.Sprintf("%s/old_short_link", baseURL),
+			},
+		},
+		{
+			name:    "post json link",
+			request: "/api/shorten",
+			body:    `{"url" :"http://practicum.yndex.ru"}`,
+			method:  http.MethodPost,
+			want: want{
+				statusCode: http.StatusCreated,
+				body:       fmt.Sprintf(`{"result":"%s/new_short_link"}`, baseURL),
+			},
+		},
+		{
+			name:    "post json conflict link",
+			request: "/api/shorten",
+			body:    `{"url" :"conflict"}`,
+			method:  http.MethodPost,
+			want: want{
+				statusCode: http.StatusConflict,
+				body:       fmt.Sprintf(`{"result":"%s/old_short_link"}`, baseURL),
+			},
+		},
+		{
+			name:    "ping DB",
+			request: "/ping",
+			body:    "",
+			method:  http.MethodGet,
+			want: want{
+				statusCode: http.StatusOK,
+				body:       "",
+			},
+		},
+		{
+			name:    "post empty batch",
+			request: "/api/shorten/batch",
+			body:    `[]`,
+			method:  http.MethodPost,
+			want: want{
+				statusCode: http.StatusBadRequest,
+				body:       "",
+			},
+		},
+		{
+			name:    "post batch",
+			request: "/api/shorten/batch",
+			body:    `[{"correlation_id": "1","original_url": "original1"}, {"correlation_id": "2","original_url": "original2"}]`,
+			method:  http.MethodPost,
+			want: want{
+				statusCode: http.StatusCreated,
+				body:       `[{"correlation_id":"1","short_url":"http://localhost:8080/short1"},{"correlation_id":"2","short_url":"http://localhost:8080/short2"}]`,
 			},
 		},
 	}
@@ -140,8 +209,8 @@ func TestRouter(t *testing.T) {
 					test.want.body,
 					strings.Trim(body, "\n"),
 					"expected body \"%s\" got  \"%s\"",
-					test.body,
 					test.want.body,
+					body,
 				)
 			}
 
