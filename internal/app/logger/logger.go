@@ -64,6 +64,7 @@ func LoggerMiddleware(next http.Handler) http.Handler {
 		}
 		start := time.Now()
 		method := r.Method
+		path := r.URL.Path
 		next.ServeHTTP(&lw, r)
 		duration := time.Since(start)
 		Log.Infoln(
@@ -71,6 +72,7 @@ func LoggerMiddleware(next http.Handler) http.Handler {
 			"duration", duration,
 			"status", responseData.status,
 			"size", responseData.size,
+			"path", path,
 		)
 	})
 }

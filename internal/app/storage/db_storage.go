@@ -34,15 +34,16 @@ func (s *dbStorage) Get(ctx context.Context, key string) (string, error) {
 	return original, nil
 }
 
-func (s *dbStorage) Set(ctx context.Context, val string) (string, error) {
+func (s *dbStorage) Set(ctx context.Context, val string, userID string) (string, error) {
 	short := getUniqKey()
 
 	row := s.db.QueryRowContext(
 		ctx,
-		`insert into short_urls (short, original) values ($1, $2)
+		`insert into short_urls (short, original, user_id) values ($1, $2, $3)
 		on conflict (original) do UPDATE SET original = EXCLUDED.original returning short`,
 		short,
 		val,
+		userID,
 	)
 
 	if row.Err() != nil {
@@ -72,7 +73,7 @@ func (s *dbStorage) Close() error {
 	return s.db.Close()
 }
 
-func (s *dbStorage) SetBatch(ctx context.Context, batch models.BatchRequest) (models.BatchResult, error) {
+func (s *dbStorage) SetBatch(ctx context.Context, batch models.BatchRequest, userID string) (models.BatchResult, error) {
 	result := make(models.BatchResult, 0, len(batch))
 	tx, err := s.db.BeginTx(ctx, nil)
 	defer tx.Rollback()
@@ -88,9 +89,10 @@ func (s *dbStorage) SetBatch(ctx context.Context, batch models.BatchRequest) (mo
 		}
 		_, err := tx.ExecContext(
 			ctx,
-			"insert into short_urls (short, original) values ($1, $2)",
+			"insert into short_urls (short, original, user_id) values ($1, $2, $3)",
 			resultItem.Short,
 			item.Original,
+			userID,
 		)
 
 		if err != nil {
@@ -102,11 +104,41 @@ func (s *dbStorage) SetBatch(ctx context.Context, batch models.BatchRequest) (mo
 	return result, nil
 }
 
+func (s *dbStorage) GetUserUrls(ctx context.Context, userID string) ([]StorageItem, error) {
+
+	res := []StorageItem{}
+	query := "select short, original from short_urls where user_id = $1"
+
+	rows, err := s.db.QueryContext(ctx, query, userID)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		item := StorageItem{}
+		err := rows.Scan(&item.Short, &item.Original)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, item)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
 func runMigrations(db *sql.DB) error {
 	query := `
 create table if not exists short_urls (
     short VARCHAR(20) NOT NULL PRIMARY KEY,
-    original VARCHAR(1000) NOT NULL
+    original VARCHAR(1000) NOT NULL,
+	user_id VARCHAR(100) NOT NULL
 )`
 	_, err := db.ExecContext(context.Background(), query)
 

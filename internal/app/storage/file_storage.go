@@ -10,46 +10,47 @@ import (
 	"github.com/ndreyserg/ushort/internal/app/models"
 )
 
-type storageItem struct {
-	Key   string `json:"short"`
-	Value string `json:"original"`
-}
-
 type fileStorage struct {
 	mt      *sync.Mutex
-	byKey   map[string]string
-	byVal   map[string]string
+	byKey   map[string]StorageItem
+	byVal   map[string]StorageItem
 	file    *os.File
 	encoder *json.Encoder
 }
 
-func (s *fileStorage) Set(ctx context.Context, val string) (string, error) {
+func (s *fileStorage) Set(ctx context.Context, val string, userID string) (string, error) {
 	s.mt.Lock()
 	defer s.mt.Unlock()
-	if s.byVal[val] != "" {
-		return s.byVal[val], nil
+
+	si, ok := s.byVal[val]
+
+	if ok {
+		return si.Short, nil
 	}
-	key := getUniqKey()
-	si := storageItem{
-		Key:   key,
-		Value: val,
+
+	si = StorageItem{
+		Short:    getUniqKey(),
+		Original: val,
+		UserID:   userID,
 	}
+
 	err := s.encoder.Encode(&si)
+
 	if err != nil {
 		return "", err
 	}
 
-	s.byVal[val] = key
-	s.byKey[key] = val
-	return key, nil
+	s.byVal[si.Original] = si
+	s.byKey[si.Short] = si
+	return si.Short, nil
 }
 
 func (s *fileStorage) Get(ctx context.Context, key string) (string, error) {
-	val := s.byKey[key]
-	if val == "" {
+	si, ok := s.byKey[key]
+	if !ok {
 		return "", errors.New("")
 	}
-	return val, nil
+	return si.Original, nil
 }
 
 func (s *fileStorage) Close() error {
@@ -60,11 +61,11 @@ func (s *fileStorage) Check(ctx context.Context) error {
 	return errors.New("file storage has no db")
 }
 
-func (s *fileStorage) SetBatch(ctx context.Context, batch models.BatchRequest) (models.BatchResult, error) {
+func (s *fileStorage) SetBatch(ctx context.Context, batch models.BatchRequest, userID string) (models.BatchResult, error) {
 	result := make(models.BatchResult, 0, len(batch))
 
 	for _, item := range batch {
-		short, err := s.Set(ctx, item.Original)
+		short, err := s.Set(ctx, item.Original, userID)
 
 		if err != nil {
 			return nil, err
@@ -78,6 +79,19 @@ func (s *fileStorage) SetBatch(ctx context.Context, batch models.BatchRequest) (
 	return result, nil
 }
 
+func (s *fileStorage) GetUserUrls(ctx context.Context, userID string) ([]StorageItem, error) {
+	s.mt.Lock()
+	defer s.mt.Unlock()
+	res := []StorageItem{}
+
+	for _, si := range s.byKey {
+		if si.UserID == userID {
+			res = append(res, si)
+		}
+	}
+	return res, nil
+}
+
 func NewFileStorage(filepath string) (Storage, error) {
 	file, err := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
@@ -86,17 +100,17 @@ func NewFileStorage(filepath string) (Storage, error) {
 
 	decoder := json.NewDecoder(file)
 
-	byKey := map[string]string{}
-	byVal := map[string]string{}
+	byKey := map[string]StorageItem{}
+	byVal := map[string]StorageItem{}
 
 	for decoder.More() {
-		si := &storageItem{}
+		si := StorageItem{}
 		err := decoder.Decode(&si)
 		if err != nil {
 			return nil, err
 		}
-		byKey[si.Key] = si.Value
-		byVal[si.Value] = si.Key
+		byKey[si.Short] = si
+		byVal[si.Original] = si
 	}
 
 	return &fileStorage{

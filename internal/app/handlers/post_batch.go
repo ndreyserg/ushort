@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/ndreyserg/ushort/internal/app/auth"
 	"github.com/ndreyserg/ushort/internal/app/logger"
 	"github.com/ndreyserg/ushort/internal/app/models"
 	"github.com/ndreyserg/ushort/internal/app/storage"
 )
 
-func MakePostBatchHandler(s storage.Storage, baseURL string) http.HandlerFunc {
+func MakePostBatchHandler(s storage.Storage, baseURL string, session auth.Session) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		var req models.BatchRequest
@@ -28,7 +29,15 @@ func MakePostBatchHandler(s storage.Storage, baseURL string) http.HandlerFunc {
 			return
 		}
 
-		res, err := s.SetBatch(r.Context(), req)
+		userID, err := session.Open(w, r)
+
+		if err != nil {
+			logger.Log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		res, err := s.SetBatch(r.Context(), req, userID)
 
 		if err != nil && !errors.Is(err, storage.ErrConflict) {
 			http.Error(w, "", http.StatusInternalServerError)

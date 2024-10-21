@@ -7,11 +7,12 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ndreyserg/ushort/internal/app/auth"
 	"github.com/ndreyserg/ushort/internal/app/logger"
 	"github.com/ndreyserg/ushort/internal/app/storage"
 )
 
-func makePostHandler(s storage.Storage, baseURL string) http.HandlerFunc {
+func makePostHandler(s storage.Storage, baseURL string, session auth.Session) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		b, err := io.ReadAll(r.Body)
 
@@ -24,7 +25,19 @@ func makePostHandler(s storage.Storage, baseURL string) http.HandlerFunc {
 			http.Error(w, "empty request body", http.StatusBadRequest)
 			return
 		}
-		urlID, err := s.Set(r.Context(), strings.Trim(string(b), " "))
+
+		userID, err := session.Open(w, r)
+		if err != nil {
+			logger.Log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		urlID, err := s.Set(
+			r.Context(),
+			strings.Trim(string(b), " "),
+			userID,
+		)
 
 		if err != nil {
 			if errors.Is(err, storage.ErrConflict) {

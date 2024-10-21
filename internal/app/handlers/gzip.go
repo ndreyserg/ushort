@@ -48,6 +48,11 @@ func (cw *compressWriter) WriteHeader(code int) {
 }
 
 func (cw *compressWriter) Close() error {
+	if cw.code != 0 {
+		cw.ResponseWriter.WriteHeader(cw.code)
+		cw.code = 0
+	}
+
 	if cw.gw != nil {
 		return cw.gw.Close()
 	}

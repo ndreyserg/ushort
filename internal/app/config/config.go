@@ -11,6 +11,7 @@ type Config struct {
 	LogLevel    string
 	StoragePath string
 	DSN         string
+	Secret      string
 }
 
 func MakeConfig() Config {
@@ -20,6 +21,7 @@ func MakeConfig() Config {
 	flag.StringVar(&con.LogLevel, "l", "info", "log level")
 	flag.StringVar(&con.StoragePath, "f", "", "storage file path")
 	flag.StringVar(&con.DSN, "d", "", "DSN")
+	flag.StringVar(&con.Secret, "s", "secret_key", "secret key")
 	flag.Parse()
 
 	if envServerAddr := os.Getenv("SERVER_ADDRESS"); envServerAddr != "" {
@@ -40,6 +42,10 @@ func MakeConfig() Config {
 
 	if envDSN := os.Getenv("DATABASE_DSN"); envDSN != "" {
 		con.DSN = envDSN
+	}
+
+	if envSecret := os.Getenv("SECRET_KEY"); envSecret != "" {
+		con.Secret = envSecret
 	}
 
 	return con

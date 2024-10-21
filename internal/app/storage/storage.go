@@ -23,10 +23,17 @@ var ErrConflict = errors.New("url exists")
 
 type Storage interface {
 	Get(ctx context.Context, key string) (string, error)
-	Set(ctx context.Context, val string) (string, error)
-	SetBatch(ctx context.Context, batch models.BatchRequest) (models.BatchResult, error)
+	GetUserUrls(ctx context.Context, userID string) ([]StorageItem, error)
+	Set(ctx context.Context, val string, userID string) (string, error)
+	SetBatch(ctx context.Context, batch models.BatchRequest, userID string) (models.BatchResult, error)
 	Check(ctx context.Context) error
 	Close() error
+}
+
+type StorageItem struct {
+	Original string `json:"original"`
+	Short    string `json:"short"`
+	UserID   string `json:"user_id"`
 }
 
 func NewStorage(dsn, fileName string) (Storage, error) {

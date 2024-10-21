@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/ndreyserg/ushort/internal/app/auth"
 	"github.com/ndreyserg/ushort/internal/app/logger"
 	"github.com/ndreyserg/ushort/internal/app/models"
 	"github.com/ndreyserg/ushort/internal/app/storage"
 )
 
-func MakePostJSONHandler(s storage.Storage, baseURL string) http.HandlerFunc {
+func MakePostJSONHandler(s storage.Storage, baseURL string, session auth.Session) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		var req models.Request
@@ -27,8 +28,18 @@ func MakePostJSONHandler(s storage.Storage, baseURL string) http.HandlerFunc {
 			http.Error(w, "", http.StatusBadRequest)
 			return
 		}
+
+		userID, err := session.Open(w, r)
+
+		if err != nil {
+			logger.Log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
 		w.Header().Set("content-type", "application/json")
-		urlID, err := s.Set(r.Context(), req.URL)
+
+		urlID, err := s.Set(r.Context(), req.URL, userID)
 
 		if err != nil && !errors.Is(err, storage.ErrConflict) {
 			logger.Log.Error(err)

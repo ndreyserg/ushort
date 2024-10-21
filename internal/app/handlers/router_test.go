@@ -49,16 +49,19 @@ func TestRouter(t *testing.T) {
 	storageMock.EXPECT().Check(gomock.Any()).Return(nil)
 	storageMock.EXPECT().Get(gomock.Any(), gomock.Eq("unknown_key")).Return("", errors.New(""))
 	storageMock.EXPECT().Get(gomock.Any(), gomock.Eq("existed_key")).Return("https://ya.ru", nil)
-	storageMock.EXPECT().Set(gomock.Any(), gomock.Eq("http://practicum.yndex.ru")).Return("new_short_link", nil).Times(2)
-	storageMock.EXPECT().Set(gomock.Any(), gomock.Eq("conflict")).Return("old_short_link", storage.ErrConflict).Times(2)
-	storageMock.EXPECT().SetBatch(gomock.Any(), gomock.Eq(incBatch)).Return(resBatch, nil)
+	storageMock.EXPECT().Set(gomock.Any(), gomock.Eq("http://practicum.yndex.ru"), gomock.Any()).Return("new_short_link", nil).Times(2)
+	storageMock.EXPECT().Set(gomock.Any(), gomock.Eq("conflict"), gomock.Any()).Return("old_short_link", storage.ErrConflict).Times(2)
+	storageMock.EXPECT().SetBatch(gomock.Any(), gomock.Eq(incBatch), gomock.Any()).Return(resBatch, nil)
+
+	sessionMock := mocks.NewMockSession(ctrl)
+	sessionMock.EXPECT().Open(gomock.Any(), gomock.Any()).AnyTimes()
 
 	type want struct {
 		statusCode int
 		body       string
 	}
 	const baseURL = "http://localhost:8080"
-	ts := httptest.NewServer(MakeRouter(storageMock, baseURL))
+	ts := httptest.NewServer(MakeRouter(storageMock, baseURL, sessionMock))
 	ts.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
 	}
