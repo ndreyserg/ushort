@@ -20,6 +20,7 @@ func getUniqKey() string {
 }
 
 var ErrConflict = errors.New("url exists")
+var ErrIsGone = errors.New("url is gone")
 
 type Storage interface {
 	Get(ctx context.Context, key string) (string, error)
@@ -28,12 +29,14 @@ type Storage interface {
 	SetBatch(ctx context.Context, batch models.BatchRequest, userID string) (models.BatchResult, error)
 	Check(ctx context.Context) error
 	Close() error
+	DeleteUserData(ctx context.Context, ids []string, userID string) error
 }
 
 type StorageItem struct {
-	Original string `json:"original"`
-	Short    string `json:"short"`
-	UserID   string `json:"user_id"`
+	Original  string `json:"original"`
+	Short     string `json:"short"`
+	UserID    string `json:"user_id"`
+	IsDeleted bool
 }
 
 func NewStorage(dsn, fileName string) (Storage, error) {

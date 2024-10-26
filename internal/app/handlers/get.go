@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -16,7 +17,11 @@ func makeGetHandler(s storage.Storage) http.HandlerFunc {
 		}
 		url, err := s.Get(r.Context(), key)
 		if err != nil {
-			http.Error(w, "key not found", http.StatusBadRequest)
+			if errors.Is(err, storage.ErrIsGone) {
+				w.WriteHeader(http.StatusGone)
+			} else {
+				http.Error(w, "key not found", http.StatusBadRequest)
+			}
 			return
 		}
 		http.Redirect(w, r, url, http.StatusTemporaryRedirect)

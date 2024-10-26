@@ -56,12 +56,14 @@ func TestRouter(t *testing.T) {
 	sessionMock := mocks.NewMockSession(ctrl)
 	sessionMock.EXPECT().Open(gomock.Any(), gomock.Any()).AnyTimes()
 
+	queueMock := mocks.NewMockQueue(ctrl)
+
 	type want struct {
 		statusCode int
 		body       string
 	}
 	const baseURL = "http://localhost:8080"
-	ts := httptest.NewServer(MakeRouter(storageMock, baseURL, sessionMock))
+	ts := httptest.NewServer(MakeRouter(storageMock, baseURL, sessionMock, queueMock))
 	ts.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
 	}

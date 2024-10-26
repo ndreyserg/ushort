@@ -92,6 +92,10 @@ func (s *fileStorage) GetUserUrls(ctx context.Context, userID string) ([]Storage
 	return res, nil
 }
 
+func (s *fileStorage) DeleteUserData(ctx context.Context, ids []string, userID string) error {
+	return nil
+}
+
 func NewFileStorage(filepath string) (Storage, error) {
 	file, err := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {

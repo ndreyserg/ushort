@@ -7,6 +7,7 @@ import (
 	"github.com/ndreyserg/ushort/internal/app/config"
 	"github.com/ndreyserg/ushort/internal/app/handlers"
 	"github.com/ndreyserg/ushort/internal/app/logger"
+	"github.com/ndreyserg/ushort/internal/app/queue"
 	"github.com/ndreyserg/ushort/internal/app/storage"
 )
 
@@ -26,7 +27,10 @@ func main() {
 	}
 	defer st.Close()
 
-	err = http.ListenAndServe(cfg.ServerAddr, handlers.MakeRouter(st, cfg.BaseURL, session))
+	queue := queue.NewQueue(st)
+	go queue.Listen()
+
+	err = http.ListenAndServe(cfg.ServerAddr, handlers.MakeRouter(st, cfg.BaseURL, session, queue))
 
 	if err != nil {
 		panic(err)

@@ -82,6 +82,10 @@ func (s *memoryStorage) GetUserUrls(ctx context.Context, userID string) ([]Stora
 	return res, nil
 }
 
+func (s *memoryStorage) DeleteUserData(ctx context.Context, ids []string, userID string) error {
+	return nil
+}
+
 func NewMemoryStorage() Storage {
 	byKey := map[string]StorageItem{}
 	byVal := map[string]StorageItem{}

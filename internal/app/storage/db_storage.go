@@ -3,6 +3,8 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"strings"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/ndreyserg/ushort/internal/app/models"
@@ -16,7 +18,7 @@ func (s *dbStorage) Get(ctx context.Context, key string) (string, error) {
 
 	row := s.db.QueryRowContext(
 		ctx,
-		"select original from short_urls where short = $1",
+		"select original, is_deleted from short_urls where short = $1",
 		key,
 	)
 
@@ -25,10 +27,15 @@ func (s *dbStorage) Get(ctx context.Context, key string) (string, error) {
 	}
 
 	var original string
-	err := row.Scan(&original)
+	var isDeleted bool
+	err := row.Scan(&original, &isDeleted)
 
 	if err != nil {
 		return "", err
+	}
+
+	if isDeleted {
+		return "", ErrIsGone
 	}
 
 	return original, nil
@@ -107,7 +114,7 @@ func (s *dbStorage) SetBatch(ctx context.Context, batch models.BatchRequest, use
 func (s *dbStorage) GetUserUrls(ctx context.Context, userID string) ([]StorageItem, error) {
 
 	res := []StorageItem{}
-	query := "select short, original from short_urls where user_id = $1"
+	query := "select short, original from short_urls where user_id = $1 and is_deleted = false"
 
 	rows, err := s.db.QueryContext(ctx, query, userID)
 
@@ -133,12 +140,32 @@ func (s *dbStorage) GetUserUrls(ctx context.Context, userID string) ([]StorageIt
 	return res, nil
 }
 
+func (s *dbStorage) DeleteUserData(ctx context.Context, ids []string, userID string) error {
+
+	if len(ids) == 0 {
+		return nil
+	}
+
+	query := "UPDATE short_urls SET is_deleted = true where user_id = $1 and short in ("
+	ph := make([]string, 0, len(ids))
+	args := make([]any, 0, len(ids)+1)
+	args = append(args, userID)
+	for i := 0; i < len(ids); i++ {
+		ph = append(ph, fmt.Sprintf("$%d", i+2))
+		args = append(args, ids[i])
+	}
+	query = query + strings.Join(ph, ",") + ");"
+	_, err := s.db.ExecContext(ctx, query, args...)
+	return err
+}
+
 func runMigrations(db *sql.DB) error {
 	query := `
 create table if not exists short_urls (
     short VARCHAR(20) NOT NULL PRIMARY KEY,
     original VARCHAR(1000) NOT NULL,
-	user_id VARCHAR(100) NOT NULL
+	user_id VARCHAR(100) NOT NULL,
+	is_deleted boolean default false
 )`
 	_, err := db.ExecContext(context.Background(), query)
 
