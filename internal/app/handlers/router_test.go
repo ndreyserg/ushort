@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +12,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/ndreyserg/ushort/internal/app/mocks"
+	"github.com/ndreyserg/ushort/internal/app/models"
 	"github.com/ndreyserg/ushort/internal/app/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -147,208 +150,319 @@ func TestRouterPost(t *testing.T) {
 	runTest(t, tests, ts)
 }
 
-// func testRequest(t *testing.T, ts *httptest.Server, method, reqBody string, path string) (*http.Response, string) {
+func TestRouterPostJson(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	d := initDeps(t, ctrl)
+	d.sessison.EXPECT().Open(gomock.All(), gomock.Any()).Return("", errors.New(""))
 
-// 	req, err := http.NewRequest(method, ts.URL+path, strings.NewReader(reqBody))
-// 	require.NoError(t, err)
-// 	resp, err := ts.Client().Do(req)
-// 	require.NoError(t, err)
-// 	defer resp.Body.Close()
+	d.sessison.EXPECT().Open(gomock.All(), gomock.Any()).Return("andrey", nil)
+	d.storage.EXPECT().Set(gomock.Any(), gomock.Eq("new_url"), gomock.Eq("andrey")).Return("", errors.New(""))
 
-// 	respBody, err := io.ReadAll(resp.Body)
-// 	require.NoError(t, err)
+	d.sessison.EXPECT().Open(gomock.All(), gomock.Any()).Return("andrey", nil)
+	d.storage.EXPECT().Set(gomock.Any(), gomock.Eq("new_url"), gomock.Eq("andrey")).Return("", storage.ErrConflict)
 
-// 	return resp, string(respBody)
-// }
+	d.sessison.EXPECT().Open(gomock.All(), gomock.Any()).Return("andrey", nil)
+	d.storage.EXPECT().Set(gomock.Any(), gomock.Eq("new_url"), gomock.Eq("andrey")).Return("new_short_link", nil)
 
-// func TestRouter(t *testing.T) {
+	ts := httptest.NewServer(MakeRouter(d.storage, baseURL, d.sessison, d.queue))
+	tests := []tCase{
+		{
+			name:           "uncorrect json",
+			request:        "/api/shorten",
+			body:           `{'ee':`,
+			method:         http.MethodPost,
+			wantStatusCode: http.StatusBadRequest,
+		},
+		{
+			name:           "empty url",
+			request:        "/api/shorten",
+			body:           `{"url":""}`,
+			method:         http.MethodPost,
+			wantStatusCode: http.StatusBadRequest,
+		},
+		{
+			name:           "session error",
+			request:        "/api/shorten",
+			body:           `{"url":"new_url"}`,
+			method:         http.MethodPost,
+			wantStatusCode: http.StatusInternalServerError,
+		},
+		{
+			name:           "storage error",
+			request:        "/api/shorten",
+			body:           `{"url":"new_url"}`,
+			method:         http.MethodPost,
+			wantStatusCode: http.StatusBadRequest,
+		},
+		{
+			name:           "storage conflict",
+			request:        "/api/shorten",
+			body:           `{"url":"new_url"}`,
+			method:         http.MethodPost,
+			wantStatusCode: http.StatusConflict,
+		},
 
-// 	ctrl := gomock.NewController(t)
-// 	defer ctrl.Finish()
+		{
+			name:            "storage conflict",
+			request:         "/api/shorten",
+			body:            `{"url":"new_url"}`,
+			method:          http.MethodPost,
+			wantStatusCode:  http.StatusCreated,
+			hasResponseBody: true,
+			responseBody:    fmt.Sprintf(`{"result":"%s/new_short_link"}`, baseURL),
+		},
+	}
 
-// 	incBatch := models.BatchRequest{
-// 		models.BatchRequestItem{ID: "1", Original: "original1"},
-// 		models.BatchRequestItem{ID: "2", Original: "original2"},
-// 	}
-// 	resBatch := models.BatchResult{
-// 		models.BatchResultItem{ID: "1", Short: "short1"},
-// 		models.BatchResultItem{ID: "2", Short: "short2"},
-// 	}
+	runTest(t, tests, ts)
+}
 
-// 	storageMock := mocks.NewMockStorage(ctrl)
-// 	storageMock.EXPECT().Check(gomock.Any()).Return(nil)
-// 	storageMock.EXPECT().Get(gomock.Any(), gomock.Eq("unknown_key")).Return("", errors.New(""))
-// 	storageMock.EXPECT().Get(gomock.Any(), gomock.Eq("existed_key")).Return("https://ya.ru", nil)
-// 	storageMock.EXPECT().Set(gomock.Any(), gomock.Eq("http://practicum.yndex.ru"), gomock.Any()).Return("new_short_link", nil).Times(2)
-// 	storageMock.EXPECT().Set(gomock.Any(), gomock.Eq("conflict"), gomock.Any()).Return("old_short_link", storage.ErrConflict).Times(2)
-// 	storageMock.EXPECT().SetBatch(gomock.Any(), gomock.Eq(incBatch), gomock.Any()).Return(resBatch, nil)
+func TestRouterPostBatch(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	d := initDeps(t, ctrl)
 
-// 	sessionMock := mocks.NewMockSession(ctrl)
-// 	sessionMock.EXPECT().Open(gomock.Any(), gomock.Any()).AnyTimes()
+	req := models.BatchRequest{
+		models.BatchRequestItem{ID: "1", Original: "original1"},
+		models.BatchRequestItem{ID: "2", Original: "original2"},
+	}
 
-// 	queueMock := mocks.NewMockQueue(ctrl)
+	res := models.BatchResult{
+		models.BatchResultItem{ID: "1", Short: "short1"},
+		models.BatchResultItem{ID: "2", Short: "short2"},
+	}
 
-// 	type want struct {
-// 		statusCode int
-// 		body       string
-// 	}
-// 	const baseURL = "http://localhost:8080"
-// 	ts := httptest.NewServer(MakeRouter(storageMock, baseURL, sessionMock, queueMock))
-// 	ts.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
-// 		return http.ErrUseLastResponse
-// 	}
+	reqB, _ := json.Marshal(req)
 
-// 	tests := []struct {
-// 		name    string
-// 		request string
-// 		body    string
-// 		method  string
-// 		want    want
-// 	}{
-// 		{
-// 			name:    "unknown method",
-// 			request: "/",
-// 			body:    "",
-// 			method:  http.MethodPut,
-// 			want: want{
-// 				statusCode: http.StatusBadRequest,
-// 				body:       "method not allowed",
-// 			},
-// 		},
-// 		{
-// 			name:    "empty key",
-// 			request: "/",
-// 			body:    "",
-// 			method:  http.MethodGet,
-// 			want: want{
-// 				statusCode: http.StatusBadRequest,
-// 				body:       "method not allowed",
-// 			},
-// 		},
-// 		{
-// 			name:    "unknown key",
-// 			request: "/unknown_key",
-// 			body:    "",
-// 			method:  http.MethodGet,
-// 			want: want{
-// 				statusCode: http.StatusBadRequest,
-// 				body:       "key not found",
-// 			},
-// 		},
-// 		{
-// 			name:    "existed key",
-// 			request: "/existed_key",
-// 			body:    "",
-// 			method:  http.MethodGet,
-// 			want: want{
-// 				statusCode: http.StatusTemporaryRedirect,
-// 				body:       "<a href=\"https://ya.ru\">Temporary Redirect</a>.",
-// 			},
-// 		},
-// 		{
-// 			name:    "post empty link",
-// 			request: "/",
-// 			body:    "",
-// 			method:  http.MethodPost,
-// 			want: want{
-// 				statusCode: http.StatusBadRequest,
-// 				body:       "empty request body",
-// 			},
-// 		},
-// 		{
-// 			name:    "post link",
-// 			request: "",
-// 			body:    "http://practicum.yndex.ru",
-// 			method:  http.MethodPost,
-// 			want: want{
-// 				statusCode: http.StatusCreated,
-// 				body:       fmt.Sprintf("%s/new_short_link", baseURL),
-// 			},
-// 		},
-// 		{
-// 			name:    "post conflict link",
-// 			request: "",
-// 			body:    "conflict",
-// 			method:  http.MethodPost,
-// 			want: want{
-// 				statusCode: http.StatusConflict,
-// 				body:       fmt.Sprintf("%s/old_short_link", baseURL),
-// 			},
-// 		},
-// 		{
-// 			name:    "post json link",
-// 			request: "/api/shorten",
-// 			body:    `{"url" :"http://practicum.yndex.ru"}`,
-// 			method:  http.MethodPost,
-// 			want: want{
-// 				statusCode: http.StatusCreated,
-// 				body:       fmt.Sprintf(`{"result":"%s/new_short_link"}`, baseURL),
-// 			},
-// 		},
-// 		{
-// 			name:    "post json conflict link",
-// 			request: "/api/shorten",
-// 			body:    `{"url" :"conflict"}`,
-// 			method:  http.MethodPost,
-// 			want: want{
-// 				statusCode: http.StatusConflict,
-// 				body:       fmt.Sprintf(`{"result":"%s/old_short_link"}`, baseURL),
-// 			},
-// 		},
-// 		{
-// 			name:    "ping DB",
-// 			request: "/ping",
-// 			body:    "",
-// 			method:  http.MethodGet,
-// 			want: want{
-// 				statusCode: http.StatusOK,
-// 				body:       "",
-// 			},
-// 		},
-// 		{
-// 			name:    "post empty batch",
-// 			request: "/api/shorten/batch",
-// 			body:    `[]`,
-// 			method:  http.MethodPost,
-// 			want: want{
-// 				statusCode: http.StatusBadRequest,
-// 				body:       "",
-// 			},
-// 		},
-// 		{
-// 			name:    "post batch",
-// 			request: "/api/shorten/batch",
-// 			body:    `[{"correlation_id": "1","original_url": "original1"}, {"correlation_id": "2","original_url": "original2"}]`,
-// 			method:  http.MethodPost,
-// 			want: want{
-// 				statusCode: http.StatusCreated,
-// 				body:       `[{"correlation_id":"1","short_url":"http://localhost:8080/short1"},{"correlation_id":"2","short_url":"http://localhost:8080/short2"}]`,
-// 			},
-// 		},
-// 	}
+	d.sessison.EXPECT().Open(gomock.All(), gomock.Any()).Return("", errors.New(""))
 
-// 	for _, test := range tests {
-// 		t.Run(test.name, func(t *testing.T) {
+	d.sessison.EXPECT().Open(gomock.All(), gomock.Any()).Return("andrey", nil)
+	d.storage.EXPECT().SetBatch(gomock.Any(), gomock.Eq(req), gomock.Eq("andrey")).Return(nil, errors.New(""))
 
-// 			resp, body := testRequest(t, ts, test.method, test.body, test.request)
-// 			defer resp.Body.Close()
-// 			if assert.Equal(
-// 				t,
-// 				test.want.statusCode,
-// 				resp.StatusCode,
-// 				"expected status code %d got %d",
-// 				test.want.statusCode, resp.StatusCode,
-// 			) {
-// 				assert.Equal(
-// 					t,
-// 					test.want.body,
-// 					strings.Trim(body, "\n"),
-// 					"expected body \"%s\" got  \"%s\"",
-// 					test.want.body,
-// 					body,
-// 				)
-// 			}
+	d.sessison.EXPECT().Open(gomock.All(), gomock.Any()).Return("andrey", nil)
+	d.storage.EXPECT().SetBatch(gomock.Any(), gomock.Eq(req), gomock.Eq("andrey")).Return(nil, storage.ErrConflict)
 
-// 		})
-// 	}
-// }
+	d.sessison.EXPECT().Open(gomock.All(), gomock.Any()).Return("andrey", nil)
+	d.storage.EXPECT().SetBatch(gomock.Any(), gomock.Eq(req), gomock.Eq("andrey")).Return(res, nil)
+
+	ts := httptest.NewServer(MakeRouter(d.storage, baseURL, d.sessison, d.queue))
+	tests := []tCase{
+		{
+			name:           "uncorrect json",
+			request:        "/api/shorten/batch",
+			body:           `{'ee':`,
+			method:         http.MethodPost,
+			wantStatusCode: http.StatusBadRequest,
+		},
+		{
+			name:           "empty request",
+			request:        "/api/shorten/batch",
+			body:           `[]`,
+			method:         http.MethodPost,
+			wantStatusCode: http.StatusBadRequest,
+		},
+		{
+			name:           "session error",
+			request:        "/api/shorten/batch",
+			body:           string(reqB),
+			method:         http.MethodPost,
+			wantStatusCode: http.StatusInternalServerError,
+		},
+		{
+			name:           "storage error",
+			request:        "/api/shorten/batch",
+			body:           string(reqB),
+			method:         http.MethodPost,
+			wantStatusCode: http.StatusInternalServerError,
+		},
+		{
+			name:           "storage conflict",
+			request:        "/api/shorten/batch",
+			body:           string(reqB),
+			method:         http.MethodPost,
+			wantStatusCode: http.StatusCreated,
+		},
+
+		{
+			name:            "success",
+			request:         "/api/shorten/batch",
+			body:            string(reqB),
+			method:          http.MethodPost,
+			wantStatusCode:  http.StatusCreated,
+			hasResponseBody: true,
+			responseBody: fmt.Sprintf(
+				`[{"correlation_id":"1","short_url":"%s/short1"},{"correlation_id":"2","short_url":"%s/short2"}]`,
+				baseURL, baseURL,
+			),
+		},
+	}
+	runTest(t, tests, ts)
+}
+
+func TestRouterPing(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	d := initDeps(t, ctrl)
+
+	d.storage.EXPECT().Check(gomock.Any()).Return(errors.New(""))
+	d.storage.EXPECT().Check(gomock.Any()).Return(nil)
+
+	ts := httptest.NewServer(MakeRouter(d.storage, baseURL, d.sessison, d.queue))
+	tests := []tCase{
+		{
+			name:           "error",
+			request:        "/ping",
+			body:           "",
+			method:         http.MethodGet,
+			wantStatusCode: http.StatusInternalServerError,
+		},
+		{
+			name:           "success",
+			request:        "/ping",
+			body:           "",
+			method:         http.MethodGet,
+			wantStatusCode: http.StatusOK,
+		},
+	}
+	runTest(t, tests, ts)
+}
+
+func TestRouterGet(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	d := initDeps(t, ctrl)
+	d.storage.EXPECT().Get(gomock.Any(), gomock.Eq("1")).Return("", errors.New(""))
+	d.storage.EXPECT().Get(gomock.Any(), gomock.Eq("2")).Return("", storage.ErrIsGone)
+
+	d.storage.EXPECT().Get(gomock.Any(), gomock.Eq("3")).Return("original url", nil)
+	ts := httptest.NewServer(MakeRouter(d.storage, baseURL, d.sessison, d.queue))
+
+	ts.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+	tests := []tCase{
+		{
+			name:           "empty",
+			request:        "/",
+			body:           "",
+			method:         http.MethodGet,
+			wantStatusCode: http.StatusBadRequest,
+		},
+		{
+			name:           "storage error",
+			request:        "/1",
+			body:           "",
+			method:         http.MethodGet,
+			wantStatusCode: http.StatusBadRequest,
+		},
+		{
+			name:           "url is gone",
+			request:        "/2",
+			body:           "",
+			method:         http.MethodGet,
+			wantStatusCode: http.StatusGone,
+		},
+		{
+			name:           "success",
+			request:        "/3",
+			body:           "",
+			method:         http.MethodGet,
+			wantStatusCode: http.StatusTemporaryRedirect,
+		},
+	}
+	runTest(t, tests, ts)
+}
+
+func TestRouterGetUserUrls(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	d := initDeps(t, ctrl)
+
+	d.sessison.EXPECT().GetID(gomock.Any()).Return("", errors.New(""))
+
+	d.sessison.EXPECT().GetID(gomock.Any()).Return("andrey", nil)
+	d.storage.EXPECT().GetUserUrls(gomock.Any(), gomock.Eq("andrey")).Return(nil, errors.New(""))
+
+	d.sessison.EXPECT().GetID(gomock.Any()).Return("andrey", nil)
+	d.storage.EXPECT().GetUserUrls(gomock.Any(), gomock.Eq("andrey")).Return([]storage.StorageItem{}, nil)
+
+	d.sessison.EXPECT().GetID(gomock.Any()).Return("andrey", nil)
+	d.storage.EXPECT().GetUserUrls(gomock.Any(), gomock.Eq("andrey")).Return([]storage.StorageItem{
+		{Original: "orig", Short: "short"},
+	}, nil)
+
+	ts := httptest.NewServer(MakeRouter(d.storage, baseURL, d.sessison, d.queue))
+	tests := []tCase{
+		{
+			name:           "unauthorized",
+			request:        "/api/user/urls",
+			body:           "",
+			method:         http.MethodGet,
+			wantStatusCode: http.StatusUnauthorized,
+		},
+
+		{
+			name:           "storage error",
+			request:        "/api/user/urls",
+			body:           "",
+			method:         http.MethodGet,
+			wantStatusCode: http.StatusInternalServerError,
+		},
+
+		{
+			name:           "empty",
+			request:        "/api/user/urls",
+			body:           "",
+			method:         http.MethodGet,
+			wantStatusCode: http.StatusNoContent,
+		},
+
+		{
+			name:            "success",
+			request:         "/api/user/urls",
+			body:            "",
+			method:          http.MethodGet,
+			wantStatusCode:  http.StatusOK,
+			hasResponseBody: true,
+			responseBody:    fmt.Sprintf(`[{"short_url":"%s/short","original_url":"orig"}]`, baseURL),
+		},
+	}
+	runTest(t, tests, ts)
+}
+
+func TestRouterDelete(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	d := initDeps(t, ctrl)
+
+	d.sessison.EXPECT().Open(gomock.Any(), gomock.Any()).Return("", errors.New(""))
+
+	d.sessison.EXPECT().Open(gomock.Any(), gomock.Any()).Return("andrey", nil)
+	d.queue.EXPECT().AddTask(gomock.Eq([]string{"short"}), gomock.Eq("andrey"))
+
+	ts := httptest.NewServer(MakeRouter(d.storage, baseURL, d.sessison, d.queue))
+	tests := []tCase{
+		{
+			name:           "bad request",
+			request:        "/api/user/urls",
+			body:           `["short]`,
+			method:         http.MethodDelete,
+			wantStatusCode: http.StatusBadRequest,
+		},
+		{
+			name:           "session error",
+			request:        "/api/user/urls",
+			body:           `["short"]`,
+			method:         http.MethodDelete,
+			wantStatusCode: http.StatusInternalServerError,
+		},
+		{
+			name:           "success",
+			request:        "/api/user/urls",
+			body:           `["short"]`,
+			method:         http.MethodDelete,
+			wantStatusCode: http.StatusAccepted,
+		},
+	}
+	runTest(t, tests, ts)
+}
