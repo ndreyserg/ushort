@@ -18,10 +18,10 @@ type responseItem struct {
 func makeGetUserUrlsHandler(s storage.Storage, baseURL string, session auth.Session) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		userID, err := session.GetID(r)
-
+		userID, err := session.Open(w, r)
 		if err != nil {
-			w.WriteHeader(http.StatusUnauthorized)
+			logger.Log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 

@@ -378,28 +378,19 @@ func TestRouterGetUserUrls(t *testing.T) {
 	defer ctrl.Finish()
 	d := initDeps(t, ctrl)
 
-	d.sessison.EXPECT().GetID(gomock.Any()).Return("", errors.New(""))
-
-	d.sessison.EXPECT().GetID(gomock.Any()).Return("andrey", nil)
+	d.sessison.EXPECT().Open(gomock.Any(), gomock.Any()).Return("andrey", nil)
 	d.storage.EXPECT().GetUserUrls(gomock.Any(), gomock.Eq("andrey")).Return(nil, errors.New(""))
 
-	d.sessison.EXPECT().GetID(gomock.Any()).Return("andrey", nil)
+	d.sessison.EXPECT().Open(gomock.Any(), gomock.Any()).Return("andrey", nil)
 	d.storage.EXPECT().GetUserUrls(gomock.Any(), gomock.Eq("andrey")).Return([]storage.StorageItem{}, nil)
 
-	d.sessison.EXPECT().GetID(gomock.Any()).Return("andrey", nil)
+	d.sessison.EXPECT().Open(gomock.Any(), gomock.Any()).Return("andrey", nil)
 	d.storage.EXPECT().GetUserUrls(gomock.Any(), gomock.Eq("andrey")).Return([]storage.StorageItem{
 		{Original: "orig", Short: "short"},
 	}, nil)
 
 	ts := httptest.NewServer(MakeRouter(d.storage, baseURL, d.sessison, d.queue))
 	tests := []tCase{
-		{
-			name:           "unauthorized",
-			request:        "/api/user/urls",
-			body:           "",
-			method:         http.MethodGet,
-			wantStatusCode: http.StatusUnauthorized,
-		},
 
 		{
 			name:           "storage error",
