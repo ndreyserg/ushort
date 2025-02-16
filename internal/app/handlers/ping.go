@@ -8,7 +8,8 @@ import (
 	"github.com/ndreyserg/ushort/internal/app/storage"
 )
 
-func makePingHandler(st storage.Storage) http.HandlerFunc {
+// MakePingHandler - обработчик проверки доступности БД
+func MakePingHandler(st storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
 		defer cancel()

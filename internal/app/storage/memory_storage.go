@@ -14,6 +14,7 @@ type memoryStorage struct {
 	byVal map[string]StorageItem
 }
 
+// Set - сохранение ссылки в хранилище и получение ee ID.
 func (s *memoryStorage) Set(ctx context.Context, val string, userID string) (string, error) {
 	s.mt.Lock()
 	defer s.mt.Unlock()
@@ -33,6 +34,7 @@ func (s *memoryStorage) Set(ctx context.Context, val string, userID string) (str
 	return si.Short, nil
 }
 
+// Get получение оригинала ссылки по ее ID.
 func (s *memoryStorage) Get(ctx context.Context, key string) (string, error) {
 	si, ok := s.byKey[key]
 
@@ -42,14 +44,17 @@ func (s *memoryStorage) Get(ctx context.Context, key string) (string, error) {
 	return si.Original, nil
 }
 
+// Close закрытие хранилища.
 func (s *memoryStorage) Close() error {
 	return nil
 }
 
+// Check проверка доступности БД.
 func (s *memoryStorage) Check(ctx context.Context) error {
 	return errors.New("memory storage has no db")
 }
 
+// SetBatch сохранение массива ссылок хранилище и получение их ID.
 func (s *memoryStorage) SetBatch(ctx context.Context, batch models.BatchRequest, userID string) (models.BatchResult, error) {
 	result := make(models.BatchResult, 0, len(batch))
 
@@ -69,6 +74,7 @@ func (s *memoryStorage) SetBatch(ctx context.Context, batch models.BatchRequest,
 	return result, nil
 }
 
+// GetUserUrls получения сохраненных ссылок по пользователю.
 func (s *memoryStorage) GetUserUrls(ctx context.Context, userID string) ([]StorageItem, error) {
 	s.mt.Lock()
 	defer s.mt.Unlock()
@@ -82,10 +88,12 @@ func (s *memoryStorage) GetUserUrls(ctx context.Context, userID string) ([]Stora
 	return res, nil
 }
 
+// DeleteUserData удаление ссылок по пользователя.
 func (s *memoryStorage) DeleteUserData(ctx context.Context, ids []string, userID string) error {
 	return nil
 }
 
+// NewMemoryStorage создание inmemory хранилища
 func NewMemoryStorage() Storage {
 	byKey := map[string]StorageItem{}
 	byVal := map[string]StorageItem{}

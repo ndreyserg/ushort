@@ -19,6 +19,7 @@ func newCompressWriter(w http.ResponseWriter) *compressWriter {
 	}
 }
 
+// Write записывает сжатый ответ в респонс
 func (cw *compressWriter) Write(b []byte) (int, error) {
 
 	ct := cw.Header().Get("Content-Type")
@@ -41,12 +42,14 @@ func (cw *compressWriter) Write(b []byte) (int, error) {
 	return cw.ResponseWriter.Write(b)
 }
 
+// WriteHeader установка кода ответа
 func (cw *compressWriter) WriteHeader(code int) {
 	if cw.code == 0 {
 		cw.code = code
 	}
 }
 
+// Close закрытие ResponseWriter
 func (cw *compressWriter) Close() error {
 	if cw.code != 0 {
 		cw.ResponseWriter.WriteHeader(cw.code)
@@ -76,10 +79,12 @@ func newCompressReader(r io.ReadCloser) (*compressReader, error) {
 	}, nil
 }
 
+// Read чтение сжатого содержимого запроса
 func (c compressReader) Read(p []byte) (n int, err error) {
 	return c.zr.Read(p)
 }
 
+// Close закрытие Reader
 func (c *compressReader) Close() error {
 	if err := c.r.Close(); err != nil {
 		return err

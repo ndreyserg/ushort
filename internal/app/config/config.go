@@ -1,3 +1,4 @@
+// Модуль с основными настройками приложения.
 package config
 
 import (
@@ -5,15 +6,17 @@ import (
 	"os"
 )
 
+// Config структура основных настроек.
 type Config struct {
-	ServerAddr  string
-	BaseURL     string
-	LogLevel    string
-	StoragePath string
-	DSN         string
-	Secret      string
+	ServerAddr  string // Адрес сервера.
+	BaseURL     string // Адрес сервера для перенаправления.
+	LogLevel    string // Уровень логирования.
+	StoragePath string // Путь к файлу для хранения в файле.
+	DSN         string // Строка подключения к БД.
+	Secret      string // Строка с секрета для JWT.
 }
 
+// MakeConfig возвращает структуру с настройками.
 func MakeConfig() Config {
 	con := Config{}
 	flag.StringVar(&con.ServerAddr, "a", "localhost:8080", "server address")

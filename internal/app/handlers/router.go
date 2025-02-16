@@ -1,3 +1,4 @@
+// Модуль с обработчиками endpoints
 package handlers
 
 import (
@@ -9,10 +10,12 @@ import (
 	"github.com/ndreyserg/ushort/internal/app/storage"
 )
 
+// Queue интерфейс очереди для асинхронного удаления
 type Queue interface {
 	AddTask(IDs []string, userID string)
 }
 
+// MakeRouter создает роутер с прописанными endpoint-им и обработчиками
 func MakeRouter(s storage.Storage, baseURL string, session auth.Session, q Queue) http.Handler {
 
 	errHandler := func(w http.ResponseWriter, r *http.Request) {
@@ -23,12 +26,12 @@ func MakeRouter(s storage.Storage, baseURL string, session auth.Session, q Queue
 
 	r.Use(gzipMiddleware)
 	r.Use(logger.LoggerMiddleware)
-	r.Get("/ping", makePingHandler(s))
-	r.Get("/{id}", makeGetHandler(s))
-	r.Post("/", makePostHandler(s, baseURL, session))
+	r.Get("/ping", MakePingHandler(s))
+	r.Get("/{id}", MakeGetHandler(s))
+	r.Post("/", MakePostHandler(s, baseURL, session))
 	r.Post("/api/shorten", MakePostJSONHandler(s, baseURL, session))
 	r.Post("/api/shorten/batch", MakePostBatchHandler(s, baseURL, session))
-	r.Get("/api/user/urls", makeGetUserUrlsHandler(s, baseURL, session))
+	r.Get("/api/user/urls", MakeGetUserUrlsHandler(s, baseURL, session))
 	r.Delete("/api/user/urls", MakeDeleteHandler(q, baseURL, session))
 	r.MethodNotAllowed(errHandler)
 	r.NotFound(errHandler)

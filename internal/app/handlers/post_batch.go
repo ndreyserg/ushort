@@ -12,6 +12,7 @@ import (
 	"github.com/ndreyserg/ushort/internal/app/storage"
 )
 
+// MakePostBatchHandler обработчик, принимающий в теле запроса множество URL для сокращения.
 func MakePostBatchHandler(s storage.Storage, baseURL string, session auth.Session) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 

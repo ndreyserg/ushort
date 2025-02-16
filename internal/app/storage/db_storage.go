@@ -14,6 +14,7 @@ type dbStorage struct {
 	db *sql.DB
 }
 
+// Get получение оригинала ссылки по ее ID.
 func (s *dbStorage) Get(ctx context.Context, key string) (string, error) {
 
 	row := s.db.QueryRowContext(
@@ -41,6 +42,7 @@ func (s *dbStorage) Get(ctx context.Context, key string) (string, error) {
 	return original, nil
 }
 
+// Set - сохранение ссылки в хранилище и получение ee ID.
 func (s *dbStorage) Set(ctx context.Context, val string, userID string) (string, error) {
 	short := getUniqKey()
 
@@ -72,14 +74,17 @@ func (s *dbStorage) Set(ctx context.Context, val string, userID string) (string,
 	return savedShort, nil
 }
 
+// Check проверка доступности БД.
 func (s *dbStorage) Check(ctx context.Context) error {
 	return s.db.PingContext(ctx)
 }
 
+// Close закрытие хранилища.
 func (s *dbStorage) Close() error {
 	return s.db.Close()
 }
 
+// SetBatch сохранение массива ссылок хранилище и получение их ID.
 func (s *dbStorage) SetBatch(ctx context.Context, batch models.BatchRequest, userID string) (models.BatchResult, error) {
 	result := make(models.BatchResult, 0, len(batch))
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -111,6 +116,7 @@ func (s *dbStorage) SetBatch(ctx context.Context, batch models.BatchRequest, use
 	return result, nil
 }
 
+// GetUserUrls получения сохраненных ссылок по пользователю.
 func (s *dbStorage) GetUserUrls(ctx context.Context, userID string) ([]StorageItem, error) {
 
 	res := []StorageItem{}
@@ -140,6 +146,7 @@ func (s *dbStorage) GetUserUrls(ctx context.Context, userID string) ([]StorageIt
 	return res, nil
 }
 
+// DeleteUserData удаление ссылок по пользователя.
 func (s *dbStorage) DeleteUserData(ctx context.Context, ids []string, userID string) error {
 
 	if len(ids) == 0 {
@@ -180,6 +187,7 @@ create table if not exists short_urls (
 	return err
 }
 
+// NewDBStorage создание БД хранилища
 func NewDBStorage(dsn string) (Storage, error) {
 	db, err := sql.Open("pgx", dsn)
 

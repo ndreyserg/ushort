@@ -1,3 +1,4 @@
+// Модуль с функциями для  логгирования
 package logger
 
 import (
@@ -17,19 +18,23 @@ type loggingResponseWriter struct {
 	responseData *responseData
 }
 
+// Write - обертка над методом Write для ResponseWriter
 func (r *loggingResponseWriter) Write(b []byte) (int, error) {
 	size, err := r.ResponseWriter.Write(b)
 	r.responseData.size += size
 	return size, err
 }
 
+// WriteHeader - обертка над методом WriteHeader для ResponseWriter
 func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	r.ResponseWriter.WriteHeader(statusCode)
 	r.responseData.status = statusCode
 }
 
+// Log - инстанс логгера
 var Log zap.SugaredLogger = *zap.NewNop().Sugar()
 
+// Initialize инициализация объекта логгера
 func Initialize(level string) error {
 
 	lvl, err := zap.ParseAtomicLevel(level)
@@ -52,6 +57,7 @@ func Initialize(level string) error {
 	return nil
 }
 
+// LoggerMiddleware middleware для логирования общей информации о запросе
 func LoggerMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		responseData := &responseData{

@@ -8,6 +8,7 @@ import (
 	"github.com/ndreyserg/ushort/internal/app/logger"
 )
 
+// MakeDeleteHandler создания обработчика для асинхронного удаления сохраненных ссылок
 func MakeDeleteHandler(q Queue, baseURL string, session auth.Session) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 

@@ -12,7 +12,8 @@ import (
 	"github.com/ndreyserg/ushort/internal/app/storage"
 )
 
-func makePostHandler(s storage.Storage, baseURL string, session auth.Session) http.HandlerFunc {
+// MakePostHandler формирует обработчик, принмающий ссылку для сохранения
+func MakePostHandler(s storage.Storage, baseURL string, session auth.Session) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		b, err := io.ReadAll(r.Body)
 

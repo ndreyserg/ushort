@@ -15,7 +15,8 @@ type responseItem struct {
 	OriginalURL string `json:"original_url"`
 }
 
-func makeGetUserUrlsHandler(s storage.Storage, baseURL string, session auth.Session) http.HandlerFunc {
+// MakeGetUserUrlsHandler получение списка сокращенных ссылок пользователя
+func MakeGetUserUrlsHandler(s storage.Storage, baseURL string, session auth.Session) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		userID, err := session.Open(w, r)

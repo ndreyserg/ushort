@@ -8,7 +8,8 @@ import (
 	"github.com/ndreyserg/ushort/internal/app/storage"
 )
 
-func makeGetHandler(s storage.Storage) http.HandlerFunc {
+// MakeGetHandler обработчик редиректа по короткой ссылке
+func MakeGetHandler(s storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		key := chi.URLParam(r, "id")
 		if key == "" {

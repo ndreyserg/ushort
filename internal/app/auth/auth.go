@@ -1,3 +1,4 @@
+// Модуль auth для работы с сессиями пользователей.
 package auth
 
 import (
@@ -12,8 +13,11 @@ import (
 	"github.com/ndreyserg/ushort/internal/app/logger"
 )
 
+// Session интерфейс взаимодействия с сессией
 type Session interface {
+	// Open открывает новую сессию, если сессии не найдено, возвращает ID пользователя в случае успеха.
 	Open(w http.ResponseWriter, r *http.Request) (string, error)
+	// GetID возвращает ID пользователя из сессии.
 	GetID(r *http.Request) (string, error)
 }
 
@@ -44,6 +48,7 @@ func (j *jwtSession) newToken(userID string) (string, error) {
 	return token.SignedString([]byte(j.secretKey))
 }
 
+// Open открывает новую сессию, если сессии не найдено, возвращает ID пользователя в случае успеха.
 func (j *jwtSession) Open(w http.ResponseWriter, r *http.Request) (string, error) {
 	id, err := j.GetID(r)
 
@@ -67,6 +72,7 @@ func (j *jwtSession) Open(w http.ResponseWriter, r *http.Request) (string, error
 	return id, nil
 }
 
+// GetID возвращает ID пользователя из сессии.
 func (j *jwtSession) GetID(r *http.Request) (string, error) {
 
 	var strToken string
@@ -100,6 +106,7 @@ func (j *jwtSession) GetID(r *http.Request) (string, error) {
 	return claims.UserID, nil
 }
 
+// NewJWTSession создает объект работы с сессиями на основе JWT
 func NewJWTSession(secret string) Session {
 	return &jwtSession{
 		secretKey: secret,

@@ -1,3 +1,4 @@
+// Пакет с реализацией простой очереди для асинхронного удаления
 package queue
 
 import (
@@ -15,15 +16,18 @@ type deleteTask struct {
 	UserID string
 }
 
+// Queue структура очереди
 type Queue struct {
 	s  storage
 	ch chan deleteTask
 }
 
+// AddTask добавляет задачу в очередь
 func (q *Queue) AddTask(IDs []string, userID string) {
 	q.ch <- deleteTask{IDs: IDs, UserID: userID}
 }
 
+// Listen запускает очередь в обработку
 func (q *Queue) Listen() {
 	for t := range q.ch {
 		go func(t deleteTask) {
@@ -35,6 +39,7 @@ func (q *Queue) Listen() {
 	}
 }
 
+// NewQueue возвращает объект очереди
 func NewQueue(s storage) *Queue {
 	return &Queue{
 		s:  s,

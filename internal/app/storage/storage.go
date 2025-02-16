@@ -1,3 +1,4 @@
+// Модуль с сокращениеми и хранением сохраненных ссылок.
 package storage
 
 import (
@@ -19,9 +20,13 @@ func getUniqKey() string {
 	return fmt.Sprintf("%X", b)
 }
 
+// ErrConflict ошибка, возникающая при повторном сохранении
 var ErrConflict = errors.New("url exists")
+
+// ErrIsGone ошибка запроса удаленной ссылки
 var ErrIsGone = errors.New("url is gone")
 
+// Storage - интерфейс хранилища
 type Storage interface {
 	Get(ctx context.Context, key string) (string, error)
 	GetUserUrls(ctx context.Context, userID string) ([]StorageItem, error)
@@ -32,6 +37,7 @@ type Storage interface {
 	DeleteUserData(ctx context.Context, ids []string, userID string) error
 }
 
+// StorageItem структура единицы хранения в хранилище.
 type StorageItem struct {
 	Original  string `json:"original"`
 	Short     string `json:"short"`
@@ -39,6 +45,7 @@ type StorageItem struct {
 	IsDeleted bool
 }
 
+// NewStorage фабрика для создания хранилищ.
 func NewStorage(dsn, fileName string) (Storage, error) {
 	if dsn != "" {
 		logger.Log.Info("database storage used")

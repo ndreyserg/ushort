@@ -12,6 +12,7 @@ import (
 	"github.com/ndreyserg/ushort/internal/app/storage"
 )
 
+// MakePostJSONHandler формирует обработчик, принмающий ссылку для сохранения в JSON
 func MakePostJSONHandler(s storage.Storage, baseURL string, session auth.Session) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
