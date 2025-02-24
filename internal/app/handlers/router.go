@@ -1,4 +1,4 @@
-// Модуль с обработчиками endpoints
+// Package handlers с обработчиками endpoints
 package handlers
 
 import (

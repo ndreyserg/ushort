@@ -26,11 +26,6 @@ type deps struct {
 	queue    *mocks.MockQueue
 }
 
-type want struct {
-	statusCode int
-	body       string
-}
-
 type tCase struct {
 	name            string
 	request         string

@@ -1,4 +1,4 @@
-// Пакет с основными моделями
+// Package models с основными моделями
 package models
 
 // Request - структура запроса на сохранение ссылки
@@ -6,7 +6,7 @@ type Request struct {
 	URL string `json:"url"`
 }
 
-// Request - структура ответ на запрос сохранения ссылки
+// Response - структура ответ на запрос сохранения ссылки
 type Response struct {
 	Result string `json:"result"`
 }

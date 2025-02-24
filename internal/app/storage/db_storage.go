@@ -131,9 +131,9 @@ func (s *dbStorage) GetUserUrls(ctx context.Context, userID string) ([]StorageIt
 
 	for rows.Next() {
 		item := StorageItem{}
-		err := rows.Scan(&item.Short, &item.Original)
-		if err != nil {
-			return nil, err
+		errN := rows.Scan(&item.Short, &item.Original)
+		if errN != nil {
+			return nil, errN
 		}
 		res = append(res, item)
 	}
