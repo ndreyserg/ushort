@@ -10,6 +10,7 @@ import (
 	"golang.org/x/tools/go/analysis/passes/structtag"
 )
 
+// OsExitAnalyzer - Анализатор использования прямого вызова os.Exit в функции main пакета main
 var OsExitAnalyzer = &analysis.Analyzer{
 	Name: "OsExitAnalyzer",
 	Doc:  "проверка использования os.Exit в функции main пакета main",
