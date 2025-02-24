@@ -9,6 +9,7 @@ import (
 	"golang.org/x/tools/go/analysis/passes/shadow"
 	"golang.org/x/tools/go/analysis/passes/structtag"
 	"honnef.co/go/tools/staticcheck"
+	"honnef.co/go/tools/stylecheck/st1008"
 )
 
 // OsExitAnalyzer - Анализатор использования прямого вызова os.Exit в функции main пакета main
@@ -53,6 +54,6 @@ func main() {
 	for _, v := range staticcheck.Analyzers {
 		mychecks = append(mychecks, v.Analyzer)
 	}
-
+	mychecks = append(mychecks, st1008.Analyzer)
 	multichecker.Main(mychecks...)
 }
