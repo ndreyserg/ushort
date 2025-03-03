@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/ndreyserg/ushort/internal/app/auth"
@@ -11,7 +12,17 @@ import (
 	"github.com/ndreyserg/ushort/internal/app/storage"
 )
 
+var (
+	buildVersion string = "N/A"
+	buildDate    string = "N/A"
+	buildCommit  string = "N/A"
+)
+
 func main() {
+	fmt.Printf("Build version: %s\n", buildVersion)
+	fmt.Printf("Build date: %s\n", buildDate)
+	fmt.Printf("Build commit: %s\n", buildCommit)
+
 	cfg := config.MakeConfig()
 	session := auth.NewJWTSession(cfg.Secret)
 	err := logger.Initialize(cfg.LogLevel)
