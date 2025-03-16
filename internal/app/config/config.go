@@ -14,6 +14,7 @@ type Config struct {
 	StoragePath string // Путь к файлу для хранения в файле.
 	DSN         string // Строка подключения к БД.
 	Secret      string // Строка с секрета для JWT.
+	EnableHTTPS bool   // Строка с секрета для JWT.
 }
 
 // MakeConfig возвращает структуру с настройками.
@@ -24,7 +25,8 @@ func MakeConfig() Config {
 	flag.StringVar(&con.LogLevel, "l", "info", "log level")
 	flag.StringVar(&con.StoragePath, "f", "", "storage file path")
 	flag.StringVar(&con.DSN, "d", "", "DSN")
-	flag.StringVar(&con.Secret, "s", "secret_key", "secret key")
+	flag.StringVar(&con.Secret, "k", "secret_key", "secret key")
+	flag.BoolVar(&con.EnableHTTPS, "s", false, "Enable HTTPS")
 	flag.Parse()
 
 	if envServerAddr := os.Getenv("SERVER_ADDRESS"); envServerAddr != "" {
@@ -49,6 +51,10 @@ func MakeConfig() Config {
 
 	if envSecret := os.Getenv("SECRET_KEY"); envSecret != "" {
 		con.Secret = envSecret
+	}
+
+	if envHTTPS := os.Getenv("ENABLE_HTTPS"); envHTTPS != "" {
+		con.EnableHTTPS = true
 	}
 
 	return con
