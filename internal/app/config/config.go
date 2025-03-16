@@ -100,7 +100,6 @@ func getDefaultConfig() Config {
 
 	dec := json.NewDecoder(file)
 	err = dec.Decode(&conf)
-	fmt.Println(conf)
 	if err != nil {
 		fmt.Println("Ошибка декодирования файла конфигурации")
 	}
